@@ -8,8 +8,10 @@
   "author": "",
   "dependencies": {
     "azure-function-express": "^2.0.0",
+    "azure-storage": "^2.10.3",
     "express": "^4.17.1",
     "passport": "^0.4.1",
-    "passport-azure-ad": "^4.3.0"
+    "passport-azure-ad": "^4.3.0",
+    "uuid": "^8.3.2"
   }
 }
