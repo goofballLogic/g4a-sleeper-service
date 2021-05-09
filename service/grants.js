@@ -17,7 +17,9 @@ async function createGrant(req, res) {
     const { name } = body;
     const log = req.context.log.bind(req.context);
 
-    const { identifier: templateId } = body["grant-template"];
+    const templateId = body.mode === "form"
+        ? body["grant-form-template"]
+        : body["grant-template"].identifier;
 
     await tryFunc(res, log, async function () {
         const grantId = `${Date.now()}-${Math.round(Math.random() * 10000000)}`;
