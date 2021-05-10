@@ -1,6 +1,6 @@
 const azs = require("azure-storage");
 
-const promised = require("./promised");
+const promised = require("../lib/promised");
 
 const blobService = azs.createBlobService();
 

@@ -1,4 +1,4 @@
-const { saveRow, listRows } = require("./rows");
+const { saveRow, listRows, fetchRow } = require("./rows");
 const copyBlob = require("./copyBlob");
 
 const { INBOX_SAS_URL_TEMPLATE, INBOX_SAS_QUERY_STRING } = process.env;
@@ -14,7 +14,7 @@ async function tryFunc(res, log, func) {
 
 async function createGrant(req, res) {
     const { user, body } = req;
-    const { name } = body;
+    const { name, mode } = body;
     const log = req.context.log.bind(req.context);
 
     const templateId = body.mode === "form"
@@ -30,7 +30,8 @@ async function createGrant(req, res) {
             when: (new Date().toISOString()),
             user: user.id,
             id: grantId,
-            name
+            name,
+            mode
         });
         req.context.log(saved);
         res.status(201).json({ grantId });
@@ -42,11 +43,36 @@ async function listGrants(req, res) {
 
     const { user } = req;
     const log = req.context.log.bind(req.context);
-    await tryFunc(res, log, async function () {
+    await tryFunc(res, log, async () => {
+
         const items = await listRows(log, "UserGrants", user.id);
         items.sort((a, b) => a?.when > b?.when ? 1 : (a?.when < b?.when) ? -1 : 0);
         res.status(200).json({ items });
+
     });
+
 }
 
-module.exports = { createGrant, listGrants };
+async function fetchGrant(req, res) {
+
+    const { user, query } = req;
+    const log = req.context.log.bind(req.context);
+    const id = query.query.substring(7);
+    console.log(id);
+    await tryFunc(res, log, async () => {
+
+        const item = await fetchRow(log, "UserGrants", user.id, id);
+        if (item)
+            res.status(200).json({ item });
+        else
+            res.status(404).send("Not found");
+
+    });
+
+}
+
+module.exports = {
+    createGrant,
+    listGrants,
+    fetchGrant
+};

@@ -1,7 +1,7 @@
 const uuid = require("uuid");
 const azs = require("azure-storage");
 
-const promised = require("./promised");
+const promised = require("../lib/promised");
 const { TableQuery } = require("azure-storage");
 
 const tableService = azs.createTableService();
@@ -49,4 +49,19 @@ async function listRows(log, tableName, partitionKey) {
 
 }
 
-module.exports = { saveRow, listRows };
+async function fetchRow(log, tableName, partitionKey, rowKey) {
+
+    try {
+        const fetched = await promised(c => tableService.retrieveEntity(tableName, partitionKey, rowKey, c));
+        return sanitize(fetched);
+    } catch (err) {
+        console.log(err);
+        if (err.resp?.statusCode === 404)
+            return null;
+        else
+            throw err;
+    }
+
+}
+
+module.exports = { saveRow, listRows, fetchRow };

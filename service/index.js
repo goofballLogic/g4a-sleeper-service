@@ -1,7 +1,7 @@
 const express = require("express");
 const { createHandler } = require("azure-function-express");
 const initializePassport = require("../lib/bearer-strategy");
-const { createGrant, listGrants } = require("./grants");
+const { createGrant, listGrants, fetchGrant } = require("./grants");
 
 const app = express();
 
@@ -32,12 +32,12 @@ app.get("/api/service", authMiddleware, async (req, res) => {
     if (!query) {
         res.status(400).send("No query specified");
     } else {
-        switch (query) {
-            case "grants":
-                await listGrants(req, res);
-                break;
-            default:
-                res.status(400).send(`Unrecognised query: ${query}`);
+        if (query === "grants") {
+            await listGrants(req, res);
+        } else if (query.startsWith("grants/")) {
+            await fetchGrant(req, res);
+        } else {
+            res.status(400).send(`Unrecognised query: ${query}`);
         }
     }
 

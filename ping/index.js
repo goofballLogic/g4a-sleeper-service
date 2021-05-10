@@ -6,9 +6,9 @@ const app = express();
 
 const authMiddleware = initializePassport(app);
 
-app.get("/api/ping", authMiddleware, async (_, res) => {
+app.get("/api/ping", authMiddleware, async (req, res) => {
 
-    res.status(200).send(true);
+    res.status(200).send(req.user?.id);
 
 });
 
