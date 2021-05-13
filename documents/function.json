@@ -4,7 +4,12 @@
       "authLevel": "anonymous",
       "type": "httpTrigger",
       "direction": "in",
-      "name": "req"
+      "name": "req",
+      "route": "documents/{*xs}",
+      "methods": [
+        "get",
+        "post"
+      ]
     },
     {
       "type": "http",

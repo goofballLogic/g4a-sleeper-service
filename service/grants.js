@@ -1,4 +1,4 @@
-const { saveRow, listRows, fetchRow } = require("./rows");
+const { saveRow, listRows, fetchRow } = require("../lib/rows");
 const copyBlob = require("./copyBlob");
 
 const { INBOX_SAS_URL_TEMPLATE, INBOX_SAS_QUERY_STRING } = process.env;
