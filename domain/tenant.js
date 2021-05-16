@@ -1,5 +1,6 @@
 const { upsertRow, createRow, listRows, fetchRow } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
+const { read, write, invalidatePrefix, readThrough } = require("../lib/crap-cache");
 
 function commonDefaults() {
 
@@ -71,39 +72,62 @@ function tenant(log, tenantId) {
 
         async listDocuments() {
 
-            return await listRows(log, "TenantDocuments", tenantId);
+            return await readThrough([tenantId, "listDocuments"], async () =>
+
+                await listRows(log, "TenantDocuments", tenantId)
+
+            );
 
         },
 
         async fetchDocument(docId, options) {
 
-            const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
-            const { include } = options;
-            if (include) {
+            return await readThrough([tenantId, docId, options], async () => {
 
-                const bits = await Promise.all(include.map(async include => {
-                    try {
-                        return await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
-                    } catch (err) {
+                const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
+                const { include } = options;
+                if (include) {
 
-                        if (err && err.statusCode == 404)
-                            return null;
-                        else
-                            throw err;
-                    }
-                }));
-                include.forEach((key, i) => {
-                    item[key] = bits[i];
-                });
+                    const bits = await Promise.all(include.map(async include => {
+                        try {
+                            return await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
+                        } catch (err) {
 
-            }
-            return item;
+                            if (err && err.statusCode == 404)
+                                return null;
+                            else
+                                throw err;
+                        }
+                    }));
+                    include.forEach((key, i) => {
+                        item[key] = bits[i];
+                    });
+
+                }
+
+                return item;
+
+            });
+
+        },
+
+        async patchDocument(docId, values) {
+
+            await readThrough([tenantId, docId], async () => {
+
+                const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
+                Object.assign(item, values);
+                return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
+
+            });
 
         },
 
         async putDocumentContent(docId, content) {
 
             await putJSONBlob(log, `${docId}-content`, tenantId, Buffer.from(content));
+            await this.patchDocument(docId, { updated: new Date().toISOString() });
+            await invalidatePrefix([tenantId, docId]);
 
         },
 
@@ -112,7 +136,9 @@ function tenant(log, tenantId) {
             const { id: createdBy } = user;
             const id = newid();
             const data = { ...values, ...commonDefaults(), createdBy, id };
-            return await createRow(log, "TenantDocuments", tenantId, id, data);
+            const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+            await invalidatePrefix([tenantId, docId]);
+            return created;
 
         }
 
