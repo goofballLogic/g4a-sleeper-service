@@ -137,7 +137,7 @@ function tenant(log, tenantId) {
             const id = newid();
             const data = { ...values, ...commonDefaults(), createdBy, id };
             const created = await createRow(log, "TenantDocuments", tenantId, id, data);
-            await invalidatePrefix([tenantId, docId]);
+            await invalidatePrefix([tenantId, id]);
             return created;
 
         }
