@@ -113,10 +113,12 @@ function tenant(log, tenantId) {
 
         async patchDocument(docId, values) {
 
-            await readThrough([tenantId, docId], async () => {
+            const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
+            if (!item) return null;
+            Object.assign(item, values);
+            await invalidatePrefix([tenantId, docId]);
+            return await readThrough([tenantId, docId], async () => {
 
-                const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
-                Object.assign(item, values);
                 return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
 
             });

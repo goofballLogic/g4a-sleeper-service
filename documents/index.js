@@ -3,6 +3,7 @@ const { createHandler } = require("azure-function-express");
 const initializePassport = require("../lib/bearer-strategy");
 const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
+const e = require("express");
 
 const app = express();
 
@@ -33,9 +34,9 @@ app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) =>
     const log = req.context.log.bind(req.context);
     const item = await theTenant(log, tid).fetchDocument(id, { include });
     if (item)
-        res.status(200).send({ item });
+        res.status(200).json({ item });
     else
-        res.status(404).send({ error: "Not found" });
+        res.status(404).json({ error: "Not found" });
 
 }));
 
@@ -55,6 +56,20 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const log = context.log.bind(context);
     const item = await theTenant(log, tid).createDocumentForUser(user, body);
     res.status(201).json({ item });
+
+}));
+
+app.patch("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
+
+    console.log("1234");
+    const { context, params, body } = req;
+    const { tid, id } = params;
+    const log = context.log.bind(context);
+    const item = await theTenant(log, tid).patchDocument(id, body);
+    if (item)
+        res.status(200).json({ item });
+    else
+        res.status(404).json({ error: "Not found" });
 
 }));
 

@@ -9,7 +9,8 @@
       "methods": [
         "get",
         "post",
-        "put"
+        "put",
+        "patch"
       ]
     },
     {
