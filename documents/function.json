@@ -8,7 +8,8 @@
       "route": "documents/{*xs}",
       "methods": [
         "get",
-        "post"
+        "post",
+        "put"
       ]
     },
     {

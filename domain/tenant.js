@@ -1,4 +1,5 @@
 const { upsertRow, createRow, listRows, fetchRow } = require("../lib/rows");
+const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
 
 function commonDefaults() {
 
@@ -74,9 +75,35 @@ function tenant(log, tenantId) {
 
         },
 
-        async fetchDocument(docId) {
+        async fetchDocument(docId, options) {
 
-            return await fetchRow(log, "TenantDocuments", tenantId, docId);
+            const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
+            const { include } = options;
+            if (include) {
+
+                const bits = await Promise.all(include.map(async include => {
+                    try {
+                        return await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
+                    } catch (err) {
+
+                        if (err && err.statusCode == 404)
+                            return null;
+                        else
+                            throw err;
+                    }
+                }));
+                include.forEach((key, i) => {
+                    item[key] = bits[i];
+                });
+
+            }
+            return item;
+
+        },
+
+        async putDocumentContent(docId, content) {
+
+            await putJSONBlob(log, `${docId}-content`, tenantId, Buffer.from(content));
 
         },
 

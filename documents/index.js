@@ -4,9 +4,6 @@ const initializePassport = require("../lib/bearer-strategy");
 const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
 
-// const azs = require("@azure/storage-blob");
-// const blobServiceClient = azs.BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-
 const app = express();
 
 const authMiddleware = initializePassport(app);
@@ -19,6 +16,7 @@ const or500 = strategy => async (req, res) => {
 
     } catch (err) {
 
+        req.context.log(`ERROR: ${err.stack}`);
         res.status(500).send(err);
 
     }
@@ -30,8 +28,10 @@ app.use(authMiddleware);
 app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
     const { tid, id } = req.params;
+    let { include } = req.query;
+    if (include) include = include.split(",").filter(x => x);
     const log = req.context.log.bind(req.context);
-    const item = await theTenant(log, tid).fetchDocument(id);
+    const item = await theTenant(log, tid).fetchDocument(id, { include });
     if (item)
         res.status(200).send({ item });
     else
@@ -55,6 +55,16 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const log = context.log.bind(context);
     const item = await theTenant(log, tid).createDocumentForUser(user, body);
     res.status(201).json({ item });
+
+}));
+
+app.put("/api/documents/:tid/:id/content", requireUserTenancy, or500(async (req, res) => {
+
+    const { context, params, body } = req;
+    const { tid, id } = params;
+    const log = context.log.bind(context);
+    await theTenant(log, tid).putDocumentContent(id, body);
+    res.status(200).send();
 
 }));
 
