@@ -17,14 +17,36 @@ const or500 = strategy => async (req, res) => {
 
     } catch (err) {
 
-        req.context.log(`ERROR: ${err.stack}`);
-        res.status(500).send(err);
+        if (err.stack)
+            req.context.log(`ERROR: ${err.stack || err}`);
+        else
+            req.context.log(err);
+        res.status(500).send("An error occurred");
 
     }
 
 }
 
 app.use(authMiddleware);
+
+app.get("/api/documents", or500(async (req, res) => {
+
+    const { user, context, query } = req;
+    const { id } = user;
+    const { status } = query;
+    const log = context.log.bind(context);
+    if (status !== "live") {
+
+        res.status(403).send({ error: "Status not allowed" });
+
+    } else {
+
+        const items = await theUser(log, id).listAccessibleDocuments(status);
+        res.status(200).json({ items });
+
+    }
+
+}));
 
 app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
