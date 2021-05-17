@@ -41,7 +41,7 @@ app.get("/api/documents", or500(async (req, res) => {
 
     } else {
 
-        const items = await theUser(log, id).listAccessibleDocuments(status);
+        const items = await theUser(log, id).documentsWithStatus(status);
         res.status(200).json({ items });
 
     }

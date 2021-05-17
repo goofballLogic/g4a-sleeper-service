@@ -10,10 +10,11 @@ function user(log, userId) {
 
         },
 
-        async listAccessibleDocuments(status) {
+        async documentsWithStatus(status) {
 
             if (status !== "live") throw new Error(`Invalid parameter status: ${status}`);
             return await listRows(log, "TenantDocuments", null, [["status eq ?", status]]);
+
         }
 
     }
