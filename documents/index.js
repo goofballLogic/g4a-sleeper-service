@@ -48,17 +48,25 @@ app.get("/api/documents", or500(async (req, res) => {
 
 }));
 
-app.get("/api/documents/public/:id", or500(async (req, res) => {
+app.get("/api/documents/public/:tid/:id", or500(async (req, res) => {
 
     const { user, context } = req;
-    const { id } = req.params;
-    const { id: userId } = user;
-    const log = context.log.bind(context);
-    const item = await theUser(log, userId).fetchPublicDocument(id);
-    if (item)
-        res.status(200).json({ item });
-    else
+    const { tid, id } = req.params;
+    if (!(tid && id)) {
+
         res.status(400).send();
+
+    } else {
+
+        const { id: userId } = user;
+        const log = context.log.bind(context);
+        const item = await theUser(log, userId).fetchPublicDocument(tid, id);
+        if (item)
+            res.status(200).json({ item });
+        else
+            res.status(400).send();
+
+    }
 
 }));
 
@@ -90,6 +98,8 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const { context, params, user, body } = req;
     const { tid } = params;
     const log = context.log.bind(context);
+    console.log("Tenant", tid, "User", user);
+
     const item = await theTenant(log, tid).createDocumentForUser(user, body);
     res.status(201).json({ item });
 
@@ -131,15 +141,25 @@ async function requireUserTenancy(req, res, next) {
 
         if (!req.models) req.models = {};
         if (!req.models.user) req.models.user = await theUser(log, id).fetch();
-        const tenants = JSON.parse(req.models.user.tenants);
-        if (tenants.includes(tid)) {
 
+        if (tid === "me") {
+
+            req.params.tid = id;
             next();
 
         } else {
 
-            log(`WARN: Attempt by ${id} to access tenant ${tid} but only has ${tenants}`);
-            res.status(403).send("Access denied");
+            const tenants = JSON.parse(req.models.user.tenants);
+            if (tid === "me" || tenants.includes(tid)) {
+
+                next();
+
+            } else {
+
+                log(`WARN: Attempt by ${id} to access tenant ${tid} but only has ${tenants}`);
+                res.status(403).send("Access denied");
+
+            }
 
         }
 

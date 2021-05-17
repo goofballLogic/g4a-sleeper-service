@@ -1,6 +1,6 @@
-const { upsertRow, createRow, listRows, fetchRow } = require("../lib/rows");
-const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
-const { read, write, invalidatePrefix, readThrough } = require("../lib/crap-cache");
+const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/rows");
+const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
+const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 
 function commonDefaults() {
 
@@ -137,10 +137,49 @@ function tenant(log, tenantId) {
 
         async createDocumentForUser(user, values) {
 
+            if ("clone-id" in values) {
+
+                return await this.cloneDocumentForUser(user, values);
+
+            } else {
+
+                const { id: createdBy } = user;
+                const id = newid();
+
+                const data = { ...values, ...commonDefaults(), createdBy, id, tenant: tenantId };
+
+                const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+
+                await invalidatePrefix([tenantId, id]);
+                return created;
+
+            }
+
+        },
+
+        async cloneDocumentForUser(user, values) {
+
+            const parentId = values["clone-id"];
+            const parentIdTenant = values["clone-tenant"];
+            const fetched = await fetchRow(log, "TenantDocuments", parentIdTenant, parentId);
+
             const { id: createdBy } = user;
             const id = newid();
-            const data = { ...values, ...commonDefaults(), createdBy, id, tenant: tenantId };
+
+            const data = { ...fetched, ...commonDefaults(), createdBy, id, tenant: tenantId, parentId, parentIdTenant };
+
             const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+
+            try {
+
+                await copyPrefixedBlobs(log, `${parentId}-`, parentIdTenant, `${id}-`, tenantId);
+
+            } catch (err) {
+
+                await deleteRow(log, "TenantDocuments", tenantId, id);
+                throw err;
+
+            }
             await invalidatePrefix([tenantId, id]);
             return created;
 

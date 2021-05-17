@@ -16,15 +16,21 @@ function user(log, userId) {
             return await listRows(log, "TenantDocuments", null, [["status eq ?", status]]);
 
         },
-        async fetchPublicDocument(id) {
 
-            const doc = await fetchRow(log, "TenantDocuments", null, id);
-            console.log(doc);
+        async fetchPublicDocument(tenantId, id) {
+
+            const doc = await fetchRow(log, "TenantDocuments", tenantId, id);
+            if (!isPublic(doc)) return null;
+            return doc;
 
         }
 
     }
 
+}
+
+function isPublic(doc) {
+    return doc && doc.status === "live";
 }
 
 module.exports = { user };
