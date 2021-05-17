@@ -72,11 +72,12 @@ function tenant(log, tenantId) {
 
         async listDocuments() {
 
-            return await readThrough([tenantId, "listDocuments"], async () =>
+            return await readThrough([tenantId, "listDocuments"], async () => {
 
-                await listRows(log, "TenantDocuments", tenantId)
+                const allRows = await listRows(log, "TenantDocuments", tenantId);
+                return allRows.filter(x => console.log(x) || (!x.status) || (x.status !== "archived"));
 
-            );
+            });
 
         },
 
@@ -117,6 +118,7 @@ function tenant(log, tenantId) {
             if (!item) return null;
             Object.assign(item, values);
             await invalidatePrefix([tenantId, docId]);
+            await invalidatePrefix([tenantId, "listDocuments"]);
             return await readThrough([tenantId, docId], async () => {
 
                 return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
