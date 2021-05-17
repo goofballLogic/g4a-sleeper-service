@@ -15,6 +15,12 @@ function user(log, userId) {
             if (status !== "live") throw new Error(`Invalid parameter status: ${status}`);
             return await listRows(log, "TenantDocuments", null, [["status eq ?", status]]);
 
+        },
+        async fetchPublicDocument(id) {
+
+            const doc = await fetchRow(log, "TenantDocuments", null, id);
+            console.log(doc);
+
         }
 
     }

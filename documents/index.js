@@ -48,6 +48,20 @@ app.get("/api/documents", or500(async (req, res) => {
 
 }));
 
+app.get("/api/documents/public/:id", or500(async (req, res) => {
+
+    const { user, context } = req;
+    const { id } = req.params;
+    const { id: userId } = user;
+    const log = context.log.bind(context);
+    const item = await theUser(log, userId).fetchPublicDocument(id);
+    if (item)
+        res.status(200).json({ item });
+    else
+        res.status(400).send();
+
+}));
+
 app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
     const { tid, id } = req.params;
