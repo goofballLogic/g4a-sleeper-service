@@ -72,7 +72,7 @@ function tenant(log, tenantId) {
 
         async listDocuments(options) {
 
-            return await readThrough([tenantId, "listDocuments"], async () => {
+            return await readThrough([tenantId, "listDocuments", JSON.stringify(options || {})], async () => {
 
                 const conditions = options && options.disposition
                     ? [["disposition eq ?", options.disposition]]

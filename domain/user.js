@@ -10,10 +10,16 @@ function user(log, userId) {
 
         },
 
-        async documentsWithStatus(status) {
+        async listDocuments(options) {
 
-            if (status !== "live") throw new Error(`Invalid parameter status: ${status}`);
-            return await listRows(log, "TenantDocuments", null, [["status eq ?", status]]);
+            const { status, disposition } = options || {};
+            if (status && status !== "live") throw new Error(`Invalid parameter status: ${status}`);
+
+            const criteria = [];
+            if (status) criteria.push(["status eq ?", status]);
+            if (disposition) criteria.push(["disposition eq ?", disposition]);
+            console.log(criteria);
+            return await listRows(log, "TenantDocuments", null, criteria);
 
         },
 

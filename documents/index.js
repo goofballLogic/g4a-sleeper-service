@@ -33,7 +33,7 @@ app.get("/api/documents", or500(async (req, res) => {
 
     const { user, context, query } = req;
     const { id } = user;
-    const { status } = query;
+    const { status, disposition } = query;
     const log = context.log.bind(context);
     if (status !== "live") {
 
@@ -41,7 +41,7 @@ app.get("/api/documents", or500(async (req, res) => {
 
     } else {
 
-        const items = await theUser(log, id).documentsWithStatus(status);
+        const items = await theUser(log, id).listDocuments({ status, disposition });
         res.status(200).json({ items });
 
     }
