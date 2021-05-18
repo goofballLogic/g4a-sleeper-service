@@ -99,7 +99,6 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const { context, params, user, body } = req;
     const { tid } = params;
     const log = context.log.bind(context);
-    console.log("Tenant", tid, "User", user);
 
     const item = await theTenant(log, tid).createDocumentForUser(user, body);
     res.status(201).json({ item });
@@ -108,7 +107,6 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
 
 app.patch("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
-    console.log("1234");
     const { context, params, body } = req;
     const { tid, id } = params;
     const log = context.log.bind(context);

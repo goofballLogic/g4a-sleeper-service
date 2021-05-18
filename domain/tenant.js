@@ -156,7 +156,13 @@ function tenant(log, tenantId) {
                 const { id: createdBy } = user;
                 const id = newid();
 
-                const data = { ...values, ...commonDefaults(), createdBy, id, tenant: tenantId };
+                const data = {
+                    ...whiteListValues(log, values),
+                    ...commonDefaults(),
+                    createdBy,
+                    id,
+                    tenant: tenantId
+                };
 
                 const created = await createRow(log, "TenantDocuments", tenantId, id, data);
 
@@ -176,7 +182,16 @@ function tenant(log, tenantId) {
             const { id: createdBy } = user;
             const id = newid();
 
-            const data = { ...fetched, ...commonDefaults(), createdBy, id, tenant: tenantId, parentId, parentIdTenant };
+            const data = {
+                ...fetched,
+                ...whiteListValues(log, values),
+                ...commonDefaults(),
+                createdBy,
+                id,
+                tenant: tenantId,
+                parentId,
+                parentIdTenant
+            };
 
             const created = await createRow(log, "TenantDocuments", tenantId, id, data);
 
@@ -196,6 +211,35 @@ function tenant(log, tenantId) {
         }
 
     }
+
+}
+
+const validKeys = /^\w*$/;
+const blacklist = ["partitionkey", "rowkey"];
+
+function whiteListValues(log, values) {
+
+    const ret = {};
+    if (values) {
+
+        for (var key of Object.keys(values)) {
+
+            const isValid = validKeys.test(key) && !blacklist.includes(key.toLowerCase());
+            if (!isValid) {
+
+                log(`${new Error(`Dropping key ${key}`).stack}`);
+
+            } else {
+
+                ret[key] = values[key];
+
+            }
+
+        }
+
+    }
+    console.log(ret);
+    return ret;
 
 }
 
