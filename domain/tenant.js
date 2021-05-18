@@ -132,7 +132,14 @@ function tenant(log, tenantId) {
 
         async putDocumentContent(docId, content) {
 
-            await putJSONBlob(log, `${docId}-content`, tenantId, Buffer.from(content));
+            await this.putDocumentPart(docId, "content", content);
+
+        },
+
+        async putDocumentPart(docId, partName, content) {
+
+            content = (typeof content === "string") ? content : JSON.stringify(content);
+            await putJSONBlob(log, `${docId}-${partName}`, tenantId, Buffer.from(content));
             await this.patchDocument(docId, { updated: new Date().toISOString() });
             await invalidatePrefix([tenantId, docId]);
 

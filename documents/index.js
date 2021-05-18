@@ -130,6 +130,19 @@ app.put("/api/documents/:tid/:id/content", requireUserTenancy, or500(async (req,
 
 }));
 
+app.put("/api/documents/:tid/:id/parts/:part", requireUserTenancy, or500(async (req, res) => {
+
+    console.log(1);
+    const { context, params, body } = req;
+    const { tid, id, part } = params;
+    const log = context.log.bind(context);
+    console.log(2, id, part, body);
+    await theTenant(log, tid).putDocumentPart(id, part, body);
+    console.log(3);
+    res.status(200).send();
+
+}));
+
 module.exports = createHandler(app);
 
 async function requireUserTenancy(req, res, next) {
