@@ -70,11 +70,14 @@ function tenant(log, tenantId) {
 
         },
 
-        async listDocuments() {
+        async listDocuments(options) {
 
             return await readThrough([tenantId, "listDocuments"], async () => {
 
-                const allRows = await listRows(log, "TenantDocuments", tenantId);
+                const conditions = options && options.disposition
+                    ? [["disposition eq ?", options.disposition]]
+                    : null;
+                const allRows = await listRows(log, "TenantDocuments", tenantId, conditions);
                 return allRows.filter(x => console.log(x) || (!x.status) || (x.status !== "archived"));
 
             });

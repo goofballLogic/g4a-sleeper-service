@@ -87,8 +87,9 @@ app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) =>
 app.get("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
 
     const { tid } = req.params;
+    const { disposition } = req.query;
     const log = req.context.log.bind(req.context);
-    const items = await theTenant(log, tid).listDocuments();
+    const items = await theTenant(log, tid).listDocuments({ disposition });
     res.json({ items });
 
 }));
