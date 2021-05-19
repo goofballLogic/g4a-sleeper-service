@@ -2,6 +2,9 @@ const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 
+const azs = require("azure-storage");
+const { entityGenerator } = azs.TableUtilities;
+
 function commonDefaults() {
 
     const now = new Date().toISOString();
@@ -84,31 +87,35 @@ function tenant(log, tenantId) {
 
         },
 
+        async fetchChildDocuments(docId, options) {
+
+            return await readThrough([tenantId, docId, options, "children"], async () => {
+
+                const conditions = [
+                    ["parentId eq ?", docId],
+                    ["parentIdTenant eq guid?", tenantId]
+                ];
+                const items = await listRows(log, "TenantDocuments", null, conditions);
+                const { include } = options;
+                if (include)
+                    await Promise.all(items.map(item => {
+                        decorateItemWithIncludedProperties(include, item.id, item);
+                    }))
+
+                return items;
+
+            });
+
+        },
+
         async fetchDocument(docId, options) {
 
             return await readThrough([tenantId, docId, options], async () => {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
                 const { include } = options;
-                if (include) {
-
-                    const bits = await Promise.all(include.map(async include => {
-                        try {
-                            return await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
-                        } catch (err) {
-
-                            if (err && err.statusCode == 404)
-                                return null;
-                            else
-                                throw err;
-                        }
-                    }));
-                    include.forEach((key, i) => {
-                        item[key] = bits[i];
-                    });
-
-                }
-
+                if (include)
+                    await decorateItemWithIncludedProperties(include, docId, item);
                 return item;
 
             });
@@ -212,6 +219,24 @@ function tenant(log, tenantId) {
 
     }
 
+
+    async function decorateItemWithIncludedProperties(include, docId, item) {
+        const bits = await Promise.all(include.map(async (include) => {
+            try {
+                return await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
+            } catch (err) {
+
+                if (err && err.statusCode == 404)
+                    return null;
+
+                else
+                    throw err;
+            }
+        }));
+        include.forEach((key, i) => {
+            item[key] = bits[i];
+        });
+    }
 }
 
 const validKeys = /^\w*$/;

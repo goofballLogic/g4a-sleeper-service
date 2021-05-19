@@ -84,6 +84,17 @@ app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) =>
 
 }));
 
+app.get("/api/documents/:tid/:id/children", requireUserTenancy, or500(async (req, res) => {
+
+    const { tid, id } = req.params;
+    let { include } = req.query;
+    if (include) include = include.split(",").filter(x => x);
+    const log = req.context.log.bind(req.context);
+    const items = await theTenant(log, tid).fetchChildDocuments(id, { include });
+    res.status(200).json({ items });
+
+}));
+
 app.get("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
 
     const { tid } = req.params;
