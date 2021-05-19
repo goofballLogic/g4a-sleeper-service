@@ -130,7 +130,7 @@ function tenant(log, tenantId) {
                         console.log(4);
                         ret.failure = `Cannot add this part when in ${existing.status} status`;
 
-                    } else if (!allowedPartStatii.inclues(part)) {
+                    } else if (!allowedPartStatii.includes(part)) {
 
                         console.log(5);
                         ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
