@@ -18,25 +18,28 @@ function user(log, userId) {
             const criteria = [];
             if (status) criteria.push(["status eq ?", status]);
             if (disposition) criteria.push(["disposition eq ?", disposition]);
-            console.log(criteria);
-            return await listRows(log, "TenantDocuments", null, criteria);
+            return await listRows(log, "TenantDocuments", userId, criteria);
+
+        },
+
+        // TODO: live should not have a special meaning here
+
+        async fetchPublicDocuments(tenantId, id) {
+
+            return await listRows(log, "TenantDocuments", null, [["status eq ?", "live"]]);
 
         },
 
         async fetchPublicDocument(tenantId, id) {
 
             const doc = await fetchRow(log, "TenantDocuments", tenantId, id);
-            if (!isPublic(doc)) return null;
+            if (!doc.status === "live") return null;
             return doc;
 
         }
 
     }
 
-}
-
-function isPublic(doc) {
-    return doc && doc.status === "live";
 }
 
 module.exports = { user };

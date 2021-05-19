@@ -29,22 +29,33 @@ const or500 = strategy => async (req, res) => {
 
 app.use(authMiddleware);
 
-app.get("/api/documents", or500(async (req, res) => {
+// app.get("/api/documents", or500(async (req, res) => {
 
-    const { user, context, query } = req;
-    const { id } = user;
-    const { status, disposition } = query;
+//     const { user, context, query } = req;
+//     const { id } = user;
+//     const { status, disposition } = query;
+//     const log = context.log.bind(context);
+//     if (status && status !== "live") {
+
+//         res.status(403).send({ error: "Status not allowed" });
+
+//     } else {
+
+//         const items = await theUser(log, id).listDocuments({ status, disposition });
+//         res.status(200).json({ items });
+
+//     }
+
+// }));
+
+
+app.get("/api/documents/public", or500(async (req, res) => {
+
+    const { user, context } = req;
+    const { id: userId } = user;
     const log = context.log.bind(context);
-    if (status && status !== "live") {
-
-        res.status(403).send({ error: "Status not allowed" });
-
-    } else {
-
-        const items = await theUser(log, id).listDocuments({ status, disposition });
-        res.status(200).json({ items });
-
-    }
+    const items = await theUser(log, userId).fetchPublicDocuments();
+    res.status(200).json({ items });
 
 }));
 
@@ -69,6 +80,8 @@ app.get("/api/documents/public/:tid/:id", or500(async (req, res) => {
     }
 
 }));
+
+app.get("/api/documents", (req, res) => res.status(404).send());
 
 app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
