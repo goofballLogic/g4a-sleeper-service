@@ -3,7 +3,6 @@ const { createHandler } = require("azure-function-express");
 const initializePassport = require("../lib/bearer-strategy");
 const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
-const e = require("express");
 
 const app = express();
 
@@ -28,26 +27,6 @@ const or500 = strategy => async (req, res) => {
 }
 
 app.use(authMiddleware);
-
-// app.get("/api/documents", or500(async (req, res) => {
-
-//     const { user, context, query } = req;
-//     const { id } = user;
-//     const { status, disposition } = query;
-//     const log = context.log.bind(context);
-//     if (status && status !== "live") {
-
-//         res.status(403).send({ error: "Status not allowed" });
-
-//     } else {
-
-//         const items = await theUser(log, id).listDocuments({ status, disposition });
-//         res.status(200).json({ items });
-
-//     }
-
-// }));
-
 
 app.get("/api/documents/public", or500(async (req, res) => {
 
@@ -123,9 +102,18 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const { context, params, user, body } = req;
     const { tid } = params;
     const log = context.log.bind(context);
+    const tenant = theTenant(log, tid);
+    const validation = await tenant.validateCreation(id, body);
+    if (validation.failure) {
 
-    const item = await theTenant(log, tid).createDocumentForUser(user, body);
-    res.status(201).json({ item });
+        res.status(400).send(validation.failure);
+
+    } else {
+
+        const item = await tenant.createDocumentForUser(user, body);
+        res.status(201).json({ item });
+
+    }
 
 }));
 
@@ -134,11 +122,21 @@ app.patch("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) 
     const { context, params, body } = req;
     const { tid, id } = params;
     const log = context.log.bind(context);
-    const item = await theTenant(log, tid).patchDocument(id, body);
-    if (item)
-        res.status(200).json({ item });
-    else
-        res.status(404).json({ error: "Not found" });
+    const tenant = theTenant(log, tid);
+    const validation = await tenant.validateUpdate(id, body);
+    if (validation.failure) {
+
+        res.status(400).send(validation.failure);
+
+    } else {
+
+        const item = await tenant.patchDocument(id, body);
+        if (item)
+            res.status(200).json({ item });
+        else
+            res.status(404).json({ error: "Not found" });
+
+    }
 
 }));
 
@@ -147,21 +145,38 @@ app.put("/api/documents/:tid/:id/content", requireUserTenancy, or500(async (req,
     const { context, params, body } = req;
     const { tid, id } = params;
     const log = context.log.bind(context);
-    await theTenant(log, tid).putDocumentContent(id, body);
-    res.status(200).send();
+    const tenant = theTenant(log, tid);
+    const validation = await tenant.validateDocumentContentUpdate(id, body);
+    if (validation.failure) {
+
+        res.status(400).send(validation.failure);
+
+    } else {
+
+        await tenant.putDocumentContent(id, body);
+        res.status(200).send();
+
+    }
 
 }));
 
 app.put("/api/documents/:tid/:id/parts/:part", requireUserTenancy, or500(async (req, res) => {
 
-    console.log(1);
     const { context, params, body } = req;
     const { tid, id, part } = params;
     const log = context.log.bind(context);
-    console.log(2, id, part, body);
-    await theTenant(log, tid).putDocumentPart(id, part, body);
-    console.log(3);
-    res.status(200).send();
+    const tenant = theTenant(log, tid);
+    const validation = await tenant.validateDocumentPartUpdate(id, part, body);
+    if (validation.failure) {
+
+        res.status(400).send(validation.failure);
+
+    } else {
+
+        await tenant.putDocumentPart(id, part, body);
+        res.status(200).send();
+
+    }
 
 }));
 

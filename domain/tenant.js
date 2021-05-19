@@ -2,9 +2,6 @@ const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 
-const azs = require("azure-storage");
-const { entityGenerator } = azs.TableUtilities;
-
 function commonDefaults() {
 
     const now = new Date().toISOString();
@@ -13,6 +10,23 @@ function commonDefaults() {
 }
 
 const newid = () => `${Date.now()}_${Math.round(Math.random() * 1000000)}`;
+
+const allowedStatusTransitions = {
+    "draft": ["open", "archived", "submitted"],
+    "open": ["closed", "archived"],
+    "closed": ["open", "archived"]
+};
+
+const allowedDispositionStatusParts = {
+    "application": {
+        "draft": "application"
+    },
+    "grant": {
+        "draft": "content",
+        "open": "content",
+        "closed": "content"
+    }
+}
 
 function tenant(log, tenantId) {
 
@@ -73,6 +87,94 @@ function tenant(log, tenantId) {
 
         },
 
+        async validateCreation(id, data) {
+
+            const ret = {};
+            if (!(data && data.status === "draft")) {
+                ret.failure = "Status must be 'draft'";
+            }
+            return ret;
+
+        },
+
+        async validateDocumentContentUpdate(id, data) {
+
+            return await this.validateDocumentPartUpdate(id, "content", data);
+
+        },
+
+        async validateDocumentPartUpdate(id, part, data) {
+
+            console.log(1);
+            const ret = {};
+            const existing = await this.fetchDocument(id);
+            if (!existing) {
+
+                console.log(2);
+                ret.failure = "Missing document";
+
+            } else {
+
+                console.log(3);
+                const allowedForDisposition = allowedDispositionStatusParts[existing.disposition];
+                if (!allowedForDisposition) {
+
+                    console.log(6);
+                    ret.failure = `Cannot add parts to a ${existing.disposition} document`;
+
+                } else {
+
+                    const allowedPartStatii = allowedForDisposition[existing.status];
+                    if (!allowedPartStatii) {
+
+                        console.log(4);
+                        ret.failure = `Cannot add this part when in ${existing.status} status`;
+
+                    } else if (!allowedPartStatii.inclues(part)) {
+
+                        console.log(5);
+                        ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
+
+                    }
+
+                }
+
+            }
+            return ret;
+
+        },
+
+        async validateUpdate(id, data) {
+
+            const ret = {};
+            if (data && data.status) {
+
+                const existing = await this.fetchDocument(id);
+                if (existing) {
+
+                    if (existing.status !== data.status) {
+
+                        const allowedTransitionStatii = allowedStatusTransitions[existing.status];
+                        if (!allowedTransitionStatii) {
+
+                            ret.failure = `Cannot change status from ${existing.status}`;
+
+                        } else if (!allowedTransitionStatii.includes(data.status)) {
+
+                            const allowed = [exising.status, ...allowedTransitionStatii].map(x => `'${x}'`).join(", ");
+                            ret.failure = `Status must be one of [${allowed}]`;
+
+                        }
+
+                    }
+
+                }
+
+            }
+            return ret;
+
+        },
+
         async listDocuments(options) {
 
             return await readThrough([tenantId, "listDocuments", JSON.stringify(options || {})], async () => {
@@ -113,7 +215,7 @@ function tenant(log, tenantId) {
             return await readThrough([tenantId, docId, options], async () => {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
-                const { include } = options;
+                const { include } = options || {};
                 if (include)
                     await decorateItemWithIncludedProperties(include, docId, item);
                 return item;
