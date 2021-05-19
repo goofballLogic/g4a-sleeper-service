@@ -35,7 +35,7 @@ app.get("/api/documents", or500(async (req, res) => {
     const { id } = user;
     const { status, disposition } = query;
     const log = context.log.bind(context);
-    if (status !== "live") {
+    if (status && status !== "live") {
 
         res.status(403).send({ error: "Status not allowed" });
 
