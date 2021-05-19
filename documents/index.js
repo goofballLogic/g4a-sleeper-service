@@ -103,7 +103,7 @@ app.post("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const { tid } = params;
     const log = context.log.bind(context);
     const tenant = theTenant(log, tid);
-    const validation = await tenant.validateCreation(id, body);
+    const validation = await tenant.validateCreation(body);
     if (validation.failure) {
 
         res.status(400).send(validation.failure);

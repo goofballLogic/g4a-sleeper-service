@@ -87,7 +87,7 @@ function tenant(log, tenantId) {
 
         },
 
-        async validateCreation(id, data) {
+        async validateCreation(data) {
 
             const ret = {};
             if (!(data && data.status === "draft")) {
