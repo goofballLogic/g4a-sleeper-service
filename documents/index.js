@@ -3,28 +3,12 @@ const { createHandler } = require("azure-function-express");
 const initializePassport = require("../lib/bearer-strategy");
 const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
+const or500 = require("../lib/or500");
+const requireUserTenancy = require("../lib/require-user-tenancy");
 
 const app = express();
 
 const authMiddleware = initializePassport(app);
-
-const or500 = strategy => async (req, res) => {
-
-    try {
-
-        await strategy(req, res);
-
-    } catch (err) {
-
-        if (err.stack)
-            req.context.log(`ERROR: ${err.stack || err}`);
-        else
-            req.context.log(err);
-        res.status(500).send("An error occurred");
-
-    }
-
-}
 
 app.use(authMiddleware);
 
@@ -182,43 +166,3 @@ app.put("/api/documents/:tid/:id/parts/:part", requireUserTenancy, or500(async (
 }));
 
 module.exports = createHandler(app);
-
-async function requireUserTenancy(req, res, next) {
-
-    try {
-
-        const { tid } = req.params;
-        const { log } = req.context;
-        const { id } = req.user;
-
-        if (!req.models) req.models = {};
-        if (!req.models.user) req.models.user = await theUser(log, id).fetch();
-
-        if (tid === "me") {
-
-            req.params.tid = id;
-            next();
-
-        } else {
-
-            const tenants = JSON.parse(req.models.user.tenants);
-            if (tid === "me" || tenants.includes(tid)) {
-
-                next();
-
-            } else {
-
-                log(`WARN: Attempt by ${id} to access tenant ${tid} but only has ${tenants}`);
-                res.status(403).send("Access denied");
-
-            }
-
-        }
-
-    } catch (err) {
-
-        next(err);
-
-    }
-
-}

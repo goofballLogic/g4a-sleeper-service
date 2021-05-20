@@ -3,9 +3,9 @@ const { fetchRow, listRows } = require("../lib/rows");
 const { Client } = require("@microsoft/microsoft-graph-client");
 const { getToken, tokenRequest } = require("../lib/azure-auth");
 const { readThrough } = require("../lib/crap-cache");
-const ADcacheOptions = { expiry: 1000 * 60 * 10 };
+const { fetchPublicStatusForTenant } = require("./status");
 
-const publicStatuses = ["live"];
+const ADcacheOptions = { expiry: 1000 * 60 * 10 };
 
 function user(log, userId) {
 
@@ -43,7 +43,8 @@ function user(log, userId) {
         async listDocuments(options) {
 
             const { status, disposition } = options || {};
-            if (status && status !== "live") throw new Error(`Invalid parameter status: ${status}`);
+            const publicStatus = await fetchPublicStatusForTenant(tenantId);
+            if (status && status !== publicStatus) throw new Error(`Invalid parameter status: ${status}`);
 
             const criteria = [];
             if (status) criteria.push(["status eq ?", status]);
@@ -52,19 +53,20 @@ function user(log, userId) {
 
         },
 
-        // TODO: live should not have a special meaning here
-
         async fetchPublicDocuments(tenantId, id) {
 
-            return await listRows(log, "TenantDocuments", null, [["status eq ?", "live"]]);
+            const publicStatus = await fetchPublicStatusForTenant(tenantId);
+            return await listRows(log, "TenantDocuments", null, [["status eq ?", publicStatus]]);
 
         },
 
         async fetchPublicDocument(tenantId, id, options) {
-            console.log(arguments);
 
             const doc = await fetchRow(log, "TenantDocuments", tenantId, id);
-            if (!publicStatuses.includes(doc.status)) return null;
+
+            const publicStatus = await fetchPublicStatusForTenant(tenantId);
+            if (doc.status !== publicStatus) return null;
+
             if (options && options.include) {
 
                 const { include } = options;

@@ -6,9 +6,6 @@ const { user: theUser } = require("../domain/user");
 
 const entitlements = require("../domain/entitlements");
 
-// const azs = require("@azure/storage-blob");
-// const blobServiceClient = azs.BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-
 const app = express();
 
 const authMiddleware = initializePassport(app);
@@ -16,6 +13,7 @@ const authMiddleware = initializePassport(app);
 app.post("/api/initialize", authMiddleware, async (req, res) => {
 
     try {
+
         const userId = req.query?.userId || req.user?.id;
         if (!userId) throw new Error("No user found");
 
@@ -49,11 +47,16 @@ async function initializeUser(userId, defaultTenantId, log) {
 
     console.log("Initializing user");
     const tenant = theTenant(log, defaultTenantId);
-    await tenant.ensureExists({ name: "Default tenant" });
+    const user = theUser(log, userId);
+
+    const userAttributes = await user.fetchADAttributes();
+
+    const displayName = `Grants by ${userAttributes.givenName} ${userAttributes.surname}`;
+    await tenant.ensureExists({ name: "Default tenant", displayName });
     const defaultGroupPermissions = JSON.stringify([entitlements.global.CREATE_DOCUMENT]);
     const adminsGroup = await tenant.fetchOrCreateGroup("Owners", defaultGroupPermissions);
-    const user = await tenant.ensureUserExists(userId, { defaultTenantId });
-    await adminsGroup.ensureGroupMembership(user);
+    const userEntry = await tenant.ensureUserExists(userId, { defaultTenantId });
+    await adminsGroup.ensureGroupMembership(userEntry);
     return user;
 
 }
