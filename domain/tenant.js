@@ -12,9 +12,9 @@ function commonDefaults() {
 const newid = () => `${Date.now()}_${Math.round(Math.random() * 1000000)}`;
 
 const allowedStatusTransitions = {
-    "draft": ["open", "archived", "submitted"],
-    "open": ["closed", "archived"],
-    "closed": ["open", "archived"]
+    "draft": ["live", "archived", "submitted"],
+    "live": ["closed", "archived"],
+    "closed": ["live", "archived"]
 };
 
 const allowedDispositionStatusParts = {
@@ -23,7 +23,7 @@ const allowedDispositionStatusParts = {
     },
     "grant": {
         "draft": "content",
-        "open": "content",
+        "live": "content",
         "closed": "content"
     }
 }
@@ -147,24 +147,21 @@ function tenant(log, tenantId) {
         async validateUpdate(id, data) {
 
             const ret = {};
-            if (data && data.status) {
 
-                const existing = await this.fetchDocument(id);
-                if (existing) {
+            const existing = await this.fetchDocument(id);
+            if (existing) {
 
-                    if (existing.status !== data.status) {
+                if (data && data.status && existing.status !== data.status) {
 
-                        const allowedTransitionStatii = allowedStatusTransitions[existing.status];
-                        if (!allowedTransitionStatii) {
+                    const allowedTransitionStatii = allowedStatusTransitions[existing.status];
+                    if (!allowedTransitionStatii) {
 
-                            ret.failure = `Cannot change status from ${existing.status}`;
+                        ret.failure = `Cannot change status from ${existing.status}`;
 
-                        } else if (!allowedTransitionStatii.includes(data.status)) {
+                    } else if (!allowedTransitionStatii.includes(data.status)) {
 
-                            const allowed = [exising.status, ...allowedTransitionStatii].map(x => `'${x}'`).join(", ");
-                            ret.failure = `Status must be one of [${allowed}]`;
-
-                        }
+                        const allowed = [existing.status, ...allowedTransitionStatii].map(x => `'${x}'`).join(", ");
+                        ret.failure = `Status must be one of [${allowed}]`;
 
                     }
 
