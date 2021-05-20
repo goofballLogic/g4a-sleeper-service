@@ -5,6 +5,8 @@ const { getToken, tokenRequest } = require("../lib/azure-auth");
 const { readThrough } = require("../lib/crap-cache");
 const ADcacheOptions = { expiry: 1000 * 60 * 10 };
 
+const publicStatuses = ["live"];
+
 function user(log, userId) {
 
     return {
@@ -19,6 +21,7 @@ function user(log, userId) {
 
             const props = "givenName,surname,identities";
             const { givenName, surname, identities } = await readThrough(["user", userId, props], async () => {
+
                 const authProvider = async (callback) => {
                     const tokenResponse = await getToken(tokenRequest);
                     callback(null, tokenResponse.accessToken);
@@ -29,6 +32,7 @@ function user(log, userId) {
                 const client = Client.init(options);
                 const path = `/users/${userId}`;
                 return await client.api(path).select(props).get();
+
             }, ADcacheOptions);
             const emailSignIn = identities?.find(x => x?.signInType === "emailAddress");
             const email = emailSignIn?.issuerAssignedId;
@@ -56,10 +60,27 @@ function user(log, userId) {
 
         },
 
-        async fetchPublicDocument(tenantId, id) {
+        async fetchPublicDocument(tenantId, id, options) {
+            console.log(arguments);
 
             const doc = await fetchRow(log, "TenantDocuments", tenantId, id);
-            if (!doc.status === "live") return null;
+            if (!publicStatuses.includes(doc.status)) return null;
+            if (options && options.include) {
+
+                const { include } = options;
+                if (include === "my-children") {
+
+                    const conditions = [
+                        ["parentIdTenant eq guid?", tenantId],
+                        ["parentId eq ?", id],
+                        ["createdBy eq guid?", userId]
+                    ];
+                    doc.myChildren = (await listRows(log, "TenantDocuments", null, conditions))
+                        .map(({ tenant, id, status }) => ({ tenant, id, status }));
+
+                }
+
+            }
             return doc;
 
         }

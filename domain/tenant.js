@@ -104,21 +104,17 @@ function tenant(log, tenantId) {
 
         async validateDocumentPartUpdate(id, part, data) {
 
-            console.log(1);
             const ret = {};
             const existing = await this.fetchDocument(id);
             if (!existing) {
 
-                console.log(2);
                 ret.failure = "Missing document";
 
             } else {
 
-                console.log(3);
                 const allowedForDisposition = allowedDispositionStatusParts[existing.disposition];
                 if (!allowedForDisposition) {
 
-                    console.log(6);
                     ret.failure = `Cannot add parts to a ${existing.disposition} document`;
 
                 } else {
@@ -126,12 +122,10 @@ function tenant(log, tenantId) {
                     const allowedPartStatii = allowedForDisposition[existing.status];
                     if (!allowedPartStatii) {
 
-                        console.log(4);
                         ret.failure = `Cannot modifry ${existing.disposition} when in ${existing.status} status`;
 
                     } else if (!allowedPartStatii.includes(part)) {
 
-                        console.log(5);
                         ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
 
                     }
@@ -179,7 +173,7 @@ function tenant(log, tenantId) {
                     ? [["disposition eq ?", options.disposition]]
                     : null;
                 const allRows = await listRows(log, "TenantDocuments", tenantId, conditions);
-                return allRows.filter(x => console.log(x) || (!x.status) || (x.status !== "archived"));
+                return allRows.filter(x => (!x.status) || (x.status !== "archived"));
 
             });
 

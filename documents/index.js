@@ -42,6 +42,7 @@ app.get("/api/documents/public/:tid/:id", or500(async (req, res) => {
 
     const { user, context } = req;
     const { tid, id } = req.params;
+    const { include } = req.query;
     if (!(tid && id)) {
 
         res.status(400).send();
@@ -50,7 +51,7 @@ app.get("/api/documents/public/:tid/:id", or500(async (req, res) => {
 
         const { id: userId } = user;
         const log = context.log.bind(context);
-        const item = await theUser(log, userId).fetchPublicDocument(tid, id);
+        const item = await theUser(log, userId).fetchPublicDocument(tid, id, { include });
         if (item)
             res.status(200).json({ item });
         else
