@@ -1,6 +1,7 @@
 const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
+const { user: theUser } = require("./user");
 
 function commonDefaults() {
 
@@ -194,11 +195,12 @@ function tenant(log, tenantId) {
                 ];
                 const items = await listRows(log, "TenantDocuments", null, conditions);
                 const { include } = options;
+                let promised = items.map(item => decorateItemWithUserInformation(item));
                 if (include)
-                    await Promise.all(items.map(item => {
-                        decorateItemWithIncludedProperties(include, item.id, item);
-                    }))
-
+                    promised = promised.concat(
+                        items.map(item => decorateItemWithIncludedProperties(include, item.id, item))
+                    );
+                await Promise.all(promised);
                 return items;
 
             });
@@ -316,7 +318,6 @@ function tenant(log, tenantId) {
 
     }
 
-
     async function decorateItemWithIncludedProperties(include, docId, item) {
         const bits = await Promise.all(include.map(async (include) => {
             try {
@@ -334,6 +335,24 @@ function tenant(log, tenantId) {
             item[key] = bits[i];
         });
     }
+
+    async function decorateItemWithUserInformation(item) {
+
+        try {
+
+            const { createdBy } = item;
+            const user = theUser(log, createdBy);
+            item.createdByUser = await user.fetchADAttributes();
+
+        } catch (err) {
+
+            log(err);
+            item.createdByUser = {};
+
+        }
+
+    }
+
 }
 
 const validKeys = /^\w*$/;
@@ -360,7 +379,6 @@ function whiteListValues(log, values) {
         }
 
     }
-    console.log(ret);
     return ret;
 
 }
