@@ -14,7 +14,7 @@ const newid = () => `${Date.now()}_${Math.round(Math.random() * 1000000)}`;
 const allowedStatusTransitions = {
     "draft": ["live", "archived", "submitted"],
     "live": ["closed", "archived"],
-    "closed": ["live", "archived"]
+    "closed": ["live", "archived", "draft"]
 };
 
 const allowedDispositionStatusParts = {
@@ -22,9 +22,7 @@ const allowedDispositionStatusParts = {
         "draft": "application"
     },
     "grant": {
-        "draft": "content",
-        "live": "content",
-        "closed": "content"
+        "draft": "content"
     }
 }
 
@@ -128,7 +126,7 @@ function tenant(log, tenantId) {
                     if (!allowedPartStatii) {
 
                         console.log(4);
-                        ret.failure = `Cannot add this part when in ${existing.status} status`;
+                        ret.failure = `Cannot modifry ${existing.disposition} when in ${existing.status} status`;
 
                     } else if (!allowedPartStatii.includes(part)) {
 
