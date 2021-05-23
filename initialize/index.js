@@ -56,7 +56,16 @@ async function initializeUser(userId, defaultTenantId, log) {
     const defaultGroupPermissions = JSON.stringify([entitlements.global.CREATE_DOCUMENT]);
     const adminsGroup = await tenant.fetchOrCreateGroup("Owners", defaultGroupPermissions);
     const userEntry = await tenant.ensureUserExists(userId, { defaultTenantId });
-    await adminsGroup.ensureGroupMembership(userEntry);
+    try {
+
+        await adminsGroup.ensureGroupMembership(userEntry);
+
+    } catch (err) {
+
+        // rollback to cause initialization to run again
+        await tenant.ensureUserDoesNotExist(userId);
+
+    }
     return user;
 
 }

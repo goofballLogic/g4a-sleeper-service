@@ -22,6 +22,8 @@ app.get("/api/documents/public", or500(async (req, res) => {
 
 }));
 
+app.get("/api/documents/public//", (_, res) => res.status(404).send());
+
 app.get("/api/documents/public/:tid/:id", or500(async (req, res) => {
 
     const { user, context } = req;

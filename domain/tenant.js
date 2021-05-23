@@ -59,6 +59,13 @@ function tenant(log, tenantId) {
 
         },
 
+        async ensureUserDoesNotExist(userId) {
+
+            log(`Ensure user ${userId} does not exist`);
+            await deleteRow(log, "Users", userId, "");
+
+        },
+
         async fetchOrCreateGroup(groupName, permissions) {
 
             log(`Ensure group ${groupName} exists for tenant ${tenantId}`);
