@@ -13,12 +13,6 @@ function commonDefaults() {
 
 const newid = () => `${Date.now()}_${Math.round(Math.random() * 1000000)}`;
 
-const allowedStatusTransitions = {
-    "draft": ["live", "archived", "submitted"],
-    "live": ["closed", "archived"],
-    "closed": ["live", "archived", "draft"]
-};
-
 const allowedDispositionStatusParts = {
     "application": {
         "draft": "application"
@@ -173,17 +167,9 @@ function tenant(log, tenantId) {
 
                 if (data && data.status && existing.status !== data.status) {
 
-                    const allowedTransitionStatii = allowedStatusTransitions[existing.status];
-                    if (!allowedTransitionStatii) {
-
-                        ret.failure = `Cannot change status from ${existing.status}`;
-
-                    } else if (!allowedTransitionStatii.includes(data.status)) {
-
-                        const allowed = [existing.status, ...allowedTransitionStatii].map(x => `'${x}'`).join(", ");
-                        ret.failure = `Status must be one of [${allowed}]`;
-
-                    }
+                    const workflow = await workflowForItem(log, tenantId, existing);
+                    const validation = await workflow.validateTransition(existing.status, data.status);
+                    if (!validation.isValid) ret.failure = validation.failure;
 
                 }
 
@@ -248,10 +234,8 @@ function tenant(log, tenantId) {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
                 const { include } = options || {};
-                console.log(1234);
                 if (include)
                     await decorateItemWithIncludedProperties(include, docId, item);
-                console.log(2345);
                 return item;
 
             });

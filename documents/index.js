@@ -7,6 +7,7 @@ const or500 = require("../lib/or500");
 const requireUserTenancy = require("../lib/require-user-tenancy");
 
 const app = express();
+console.log("--- Documents function starting up ----");
 
 const authMiddleware = initializePassport(app);
 

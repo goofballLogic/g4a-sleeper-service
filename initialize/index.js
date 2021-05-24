@@ -22,7 +22,7 @@ app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
     const log = req.context.log.bind(req.context);
 
     let user = await theUser(log, userId).fetch();
-    if (user && user.version > CURRENT_VERSION) {
+    if (user && user.version >= CURRENT_VERSION) {
 
         res.status(200).json(user);
 
