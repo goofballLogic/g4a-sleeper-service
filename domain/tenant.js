@@ -2,6 +2,7 @@ const { upsertRow, createRow, listRows, fetchRow, deleteRow, createRowIfNotExist
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
+const { workflowForItem, workflow: theWorkflow } = require("./workflow");
 
 function commonDefaults() {
 
@@ -41,29 +42,17 @@ function tenant(log, tenantId) {
         async ensureDefaultWorkflows(workflows) {
 
             log(`Ensuring default workflows for ${tenantId}`);
-            for (workflow of workflows) {
+            for (defaultWorkflow of workflows) {
 
-                if (!(workflow.name && workflow.disposition))
-                    throw new Error(`Invalid default workflow definition for tenant ${tenantId}: ${JSON.stringify(workflow)}`);
-                const isNew = await createRowIfNotExists(
-                    log,
-                    "TenantWorkflows",
-                    tenantId,
-                    workflow.name,
-                    {
-                        ...commonDefaults(),
-                        default: true,
-                        id: workflow.name,
-                        name: workflow.name,
-                        disposition: workflow.disposition
-                    }
-                );
-                if (isNew) {
-
-                    log(`Adding new workflow ${workflow.name} for ${tenantId}`);
-                    await putJSONBlob(log, `workflow/${workflow.name}`, tenantId, workflow);
-
-                }
+                if (!(defaultWorkflow.name && defaultWorkflow.disposition))
+                    throw new Error(
+                        `Invalid default workflow definition for tenant ${tenantId}: ${JSON.stringify(defaultWorkflow)}`
+                    );
+                const workflow = theWorkflow(log, tenantId, defaultWorkflow.name);
+                await workflow.ensureExists({
+                    default: true,
+                    ...defaultWorkflow
+                });
 
             }
 
@@ -374,7 +363,8 @@ function tenant(log, tenantId) {
 
                 if (include === "workflow") {
 
-                    item[include] = await fetchItemWorkflow(docId, item);
+                    const workflow = await workflowForItem(log, tenantId, item);
+                    item[include] = workflow && await workflow.fetchDefinition();
 
                 } else {
 
@@ -397,36 +387,6 @@ function tenant(log, tenantId) {
 
         }));
         return item;
-
-    }
-
-    async function fetchItemWorkflow(docId, item) {
-
-        if (!item) return;
-        const workflowId = item?.workflow;
-        const disposition = item?.disposition;
-        console.log("Disposition", disposition);
-        if (disposition) {
-
-            if (workflowId)
-                record = await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
-            else
-                record = (await listRows(log, "TenantWorkflows", tenantId, [
-                    ["default eq ?", true],
-                    ["disposition eq ?", disposition]
-                ]))[0];
-
-            if (record)
-                return await fetchWorkflowDefinition(record);
-
-        }
-        return null;
-
-    }
-
-    async function fetchWorkflowDefinition(record) {
-
-        return await fetchJSONBlob(log, `workflow/${record.id}`, tenantId);
 
     }
 
