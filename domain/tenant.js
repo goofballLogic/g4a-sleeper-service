@@ -3,8 +3,6 @@ const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs"
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
 
-const defaultWorkflow = require("./workflow/default.json");
-
 function commonDefaults() {
 
     const now = new Date().toISOString();
@@ -52,7 +50,13 @@ function tenant(log, tenantId) {
                     "TenantWorkflows",
                     tenantId,
                     workflow.name,
-                    { ...commonDefaults(), disposition: workflow.disposition }
+                    {
+                        ...commonDefaults(),
+                        default: true,
+                        id: workflow.name,
+                        name: workflow.name,
+                        disposition: workflow.disposition
+                    }
                 );
                 if (isNew) {
 
@@ -213,6 +217,20 @@ function tenant(log, tenantId) {
 
         },
 
+        async listWorkflows(options) {
+
+            return await readThrough([tenantId, "workflows", JSON.stringify(options || {})], async () => {
+
+                const conditions = options && options.disposition
+                    ? [["disposition eq ?", options.disposition]]
+                    : null;
+                const allRows = await listRows(log, "TenantWorkflows", tenantId, conditions);
+                return allRows.filter(x => (!x.status) || (x.status !== "archived"));
+
+            });
+
+        },
+
         async fetchChildDocuments(docId, options) {
 
             return await readThrough([tenantId, docId, options, "children"], async () => {
@@ -241,8 +259,10 @@ function tenant(log, tenantId) {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
                 const { include } = options || {};
+                console.log(1234);
                 if (include)
                     await decorateItemWithIncludedProperties(include, docId, item);
+                console.log(2345);
                 return item;
 
             });
@@ -347,21 +367,67 @@ function tenant(log, tenantId) {
     }
 
     async function decorateItemWithIncludedProperties(include, docId, item) {
-        const bits = await Promise.all(include.map(async (include) => {
+
+        await Promise.all(include.map(async include => {
+
             try {
-                return await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
+
+                if (include === "workflow") {
+
+                    item[include] = await fetchItemWorkflow(docId, item);
+
+                } else {
+
+                    item[include] = await fetchJSONBlob(log, `${docId}-${include}`, tenantId);
+
+                }
+
             } catch (err) {
 
-                if (err && err.statusCode == 404)
+                if (err && err.statusCode == 404) {
+
+                    log(`WARN: Not found - ${include} of ${docId} for tenant ${tenantId}`);
                     return null;
 
+                }
                 else
                     throw err;
+
             }
+
         }));
-        include.forEach((key, i) => {
-            item[key] = bits[i];
-        });
+        return item;
+
+    }
+
+    async function fetchItemWorkflow(docId, item) {
+
+        if (!item) return;
+        const workflowId = item?.workflow;
+        const disposition = item?.disposition;
+        console.log("Disposition", disposition);
+        if (disposition) {
+
+            if (workflowId)
+                record = await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
+            else
+                record = (await listRows(log, "TenantWorkflows", tenantId, [
+                    ["default eq ?", true],
+                    ["disposition eq ?", disposition]
+                ]))[0];
+
+            if (record)
+                return await fetchWorkflowDefinition(record);
+
+        }
+        return null;
+
+    }
+
+    async function fetchWorkflowDefinition(record) {
+
+        return await fetchJSONBlob(log, `workflow/${record.id}`, tenantId);
+
     }
 
     async function decorateItemWithUserInformation(item) {

@@ -52,7 +52,10 @@ app.get("/api/documents", (req, res) => res.status(404).send());
 app.get("/api/documents/workflows/:tid", requireUserTenancy, or500(async (req, res) => {
 
     const { tid } = req.params;
-    const items = await theTenant(log, tid).fetchWorkflows();
+    const { disposition } = req.query;
+    const { context } = req;
+    const log = context.log.bind(context);
+    const items = await theTenant(log, tid).listWorkflows({ disposition });
     res.status(200).json({ items });
 
 }));
