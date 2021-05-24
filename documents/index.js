@@ -49,6 +49,14 @@ app.get("/api/documents/public/:tid/:id", or500(async (req, res) => {
 
 app.get("/api/documents", (req, res) => res.status(404).send());
 
+app.get("/api/documents/workflows/:tid", requireUserTenancy, or500(async (req, res) => {
+
+    const { tid } = req.params;
+    const items = await theTenant(log, tid).fetchWorkflows();
+    res.status(200).json({ items });
+
+}));
+
 app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
     const { tid, id } = req.params;

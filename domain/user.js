@@ -1,5 +1,5 @@
 require("isomorphic-fetch");
-const { fetchRow, listRows } = require("../lib/rows");
+const { fetchRow, listRows, upsertRow } = require("../lib/rows");
 const { Client } = require("@microsoft/microsoft-graph-client");
 const { getToken, tokenRequest } = require("../lib/azure-auth");
 const { readThrough } = require("../lib/crap-cache");
@@ -10,6 +10,13 @@ const ADcacheOptions = { expiry: 1000 * 60 * 10 };
 function user(log, userId) {
 
     return {
+
+        async updateVersion(version) {
+
+            const record = await fetchRow(log, "Users", userId, "");
+            record.version = version;
+            await upsertRow(log, "Users", userId, "", record);
+        },
 
         async fetch() {
 

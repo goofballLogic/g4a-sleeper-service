@@ -1,7 +1,9 @@
-const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/rows");
+const { upsertRow, createRow, listRows, fetchRow, deleteRow, createRowIfNotExists } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
+
+const defaultWorkflow = require("./workflow/default.json");
 
 function commonDefaults() {
 
@@ -35,6 +37,31 @@ function tenant(log, tenantId) {
 
             log(`Ensure tenant ${tenantId} exists`);
             await createRow(log, "Tenants", tenantId, "", { ...commonDefaults(), ...defaultValues }, true);
+
+        },
+
+        async ensureDefaultWorkflows(workflows) {
+
+            log(`Ensuring default workflows for ${tenantId}`);
+            for (workflow of workflows) {
+
+                if (!(workflow.name && workflow.disposition))
+                    throw new Error(`Invalid default workflow definition for tenant ${tenantId}: ${JSON.stringify(workflow)}`);
+                const isNew = await createRowIfNotExists(
+                    log,
+                    "TenantWorkflows",
+                    tenantId,
+                    workflow.name,
+                    { ...commonDefaults(), disposition: workflow.disposition }
+                );
+                if (isNew) {
+
+                    log(`Adding new workflow ${workflow.name} for ${tenantId}`);
+                    await putJSONBlob(log, `workflow/${workflow.name}`, tenantId, workflow);
+
+                }
+
+            }
 
         },
 

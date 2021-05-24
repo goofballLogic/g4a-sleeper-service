@@ -1,0 +1,43 @@
+[
+    {
+        "id": "draft",
+        "status": "Draft",
+        "transitions": [
+            {
+                "id": "open"
+            }
+        ]
+    },
+    {
+        "id": "open",
+        "status": "Live",
+        "public": true,
+        "transitions": [
+            {
+                "id": "closed"
+            },
+            {
+                "id": "draft"
+            }
+        ]
+    },
+    {
+        "id": "closed",
+        "status": "Closed",
+        "readonly": true,
+        "transitions": [
+            {
+                "id": "archived"
+            },
+            {
+                "id": "open"
+            }
+        ]
+    },
+    {
+        "id": "archived",
+        "status": "Archived",
+        "readonly": true,
+        "transitions": []
+    }
+]

@@ -3,6 +3,8 @@ const { createHandler } = require("azure-function-express");
 const initializePassport = require("../lib/bearer-strategy");
 const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
+const or500 = require("../lib/or500");
+const { frame } = require("jsonld");
 
 const entitlements = require("../domain/entitlements");
 
@@ -10,62 +12,77 @@ const app = express();
 
 const authMiddleware = initializePassport(app);
 
-app.post("/api/initialize", authMiddleware, async (req, res) => {
+const CURRENT_VERSION = 1;
 
-    try {
+app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
 
-        const userId = req.query?.userId || req.user?.id;
-        if (!userId) throw new Error("No user found");
+    const userId = req.query?.userId || req.user?.id;
+    if (!userId) throw new Error("No user found");
 
-        const log = req.context.log.bind(req.context);
+    const log = req.context.log.bind(req.context);
 
-        let user = await theUser(log, userId).fetch();
-        if (user) {
+    let user = await theUser(log, userId).fetch();
+    if (user && user.version > CURRENT_VERSION) {
 
-            res.status(200).json(user);
+        res.status(200).json(user);
 
-        } else {
+    } else {
 
-            user = await initializeUser(userId, userId, log);
-            res.status(201).json(user);
+        const { headers } = req;
+        let referer = headers["x-initialize-referer"] || headers.referer;
+        if (!referer) throw new Error("Unable to determine referer");
 
-        }
-
-    } catch (err) {
-
-        req.context.log(err);
-        req.context.log(JSON.stringify(err, null, 3));
-        res.status(500).send("oops");
+        user = await initializeUser(userId, userId, referer, log);
+        res.status(201).json(user);
 
     }
 
-});
+}));
 
 module.exports = createHandler(app);
 
-async function initializeUser(userId, defaultTenantId, log) {
+const defaultsShape = {
+    "@context": { "@vocab": "https://tangentvision.com/g4a/vocab#" },
+    "@type": "Workflow"
+};
 
-    console.log("Initializing user");
+async function initializeUser(userId, defaultTenantId, referer, log) {
+
+    log(`Initializing user ${userId}`);
+
+    log(`Fetching default workflows from ` + referer);
+    const defaultsURL = new URL(referer);
+    defaultsURL.search = "";
+    defaultsURL.pathname = "/.well-known/workflows/defaults.jsonld";
+    const resp = await fetch(defaultsURL);
+    if (!resp.ok) throw new Error(`An error occurred fetching default workflows from ${defaultsURL}: ${resp.status}`);
+    const json = await resp.json();
+    const framed = await frame(json, defaultsShape);
+    const workflows = framed["@graph"] || [];
+
     const tenant = theTenant(log, defaultTenantId);
     const user = theUser(log, userId);
 
-    const userAttributes = await user.fetchADAttributes();
-
-    const displayName = `Grants by ${userAttributes.givenName} ${userAttributes.surname}`;
-    await tenant.ensureExists({ name: "Default tenant", displayName });
-    const defaultGroupPermissions = JSON.stringify([entitlements.global.CREATE_DOCUMENT]);
-    const adminsGroup = await tenant.fetchOrCreateGroup("Owners", defaultGroupPermissions);
-    const userEntry = await tenant.ensureUserExists(userId, { defaultTenantId });
     try {
 
+        const userAttributes = await user.fetchADAttributes();
+        const displayName = `Grants by ${userAttributes.givenName} ${userAttributes.surname}`;
+        await tenant.ensureExists({ name: "Default tenant", displayName });
+        const defaultGroupPermissions = JSON.stringify([entitlements.global.CREATE_DOCUMENT]);
+        const adminsGroup = await tenant.fetchOrCreateGroup("Owners", defaultGroupPermissions);
+        const userEntry = await tenant.ensureUserExists(userId, { defaultTenantId });
         await adminsGroup.ensureGroupMembership(userEntry);
+        await tenant.ensureDefaultWorkflows(workflows);
+        await user.updateVersion(CURRENT_VERSION);
 
     } catch (err) {
 
+        log(`Rolling back initialization of user ${userId} due to ${err.stack}`);
         // rollback to cause initialization to run again
         await tenant.ensureUserDoesNotExist(userId);
+        throw err;
 
     }
-    return user;
+    return await user.fetch();
 
 }
