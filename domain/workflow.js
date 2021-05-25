@@ -1,4 +1,4 @@
-const { listRows, createRowIfNotExists } = require("../lib/rows");
+const { listRows, createRowIfNotExists, fetchRow } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
 const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
 
@@ -14,6 +14,12 @@ function commonDefaults() {
 function workflow(log, tenantId, workflowId) {
 
     return {
+
+        async fetch() {
+
+            return await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
+
+        },
 
         async fetchDefinition() {
 

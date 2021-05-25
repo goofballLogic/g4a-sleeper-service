@@ -3,6 +3,7 @@ const { createHandler } = require("azure-function-express");
 const initializePassport = require("../lib/bearer-strategy");
 const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
+const { workflow: theWorkflow } = require("../domain/workflow");
 const or500 = require("../lib/or500");
 const requireUserTenancy = require("../lib/require-user-tenancy");
 
@@ -58,6 +59,19 @@ app.get("/api/documents/workflows/:tid", requireUserTenancy, or500(async (req, r
     const log = context.log.bind(context);
     const items = await theTenant(log, tid).listWorkflows({ disposition });
     res.status(200).json({ items });
+
+}));
+
+app.get("/api/documents/workflows/:tid/:id", requireUserTenancy, or500(async (req, res) => {
+
+    const { tid, id } = req.params;
+    const { context } = req;
+    const log = context.log.bind(context);
+    const item = await theWorkflow(log, tid, id).fetch();
+    if (item)
+        res.status(200).json({ item });
+    else
+        res.status(404).send("Not found");
 
 }));
 
