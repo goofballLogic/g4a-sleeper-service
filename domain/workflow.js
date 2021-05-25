@@ -1,5 +1,8 @@
 const { listRows, createRowIfNotExists } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
+const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
+
+const WORKFLOW_CACHE_EXPIRY_MS = process.env.WORKFLOW_CACHE_EXPIRY_MS || (1000 * 60 * 5);
 
 function commonDefaults() {
 
@@ -14,7 +17,13 @@ function workflow(log, tenantId, workflowId) {
 
         async fetchDefinition() {
 
-            return await fetchJSONBlob(log, `workflow/${workflowId}`, tenantId);
+            const blobName = `workflow/${workflowId}`;
+            return await readThrough(
+                [tenantId, blobName],
+                async () => await fetchJSONBlob(log, blobName, tenantId),
+                { expiry: WORKFLOW_CACHE_EXPIRY_MS },
+                log
+            );
 
         },
 
@@ -22,8 +31,26 @@ function workflow(log, tenantId, workflowId) {
 
             const definition = await this.fetchDefinition();
             if (!definition) return { failure: "Workflow missing" };
+            const criteria = stateId ? x => x.id === stateId : x => x.default;
+            const found = definition.workflow?.find(criteria);
+            if (!found) log(`WARN: Workflow state not found: ${stateId}`);
+            return found;
 
-            return definition.workflow?.find(x => x.id === stateId);
+        },
+
+        async mutateStateForItem(item) {
+
+            const stateDefinition = await this.fetchDefinitionState(item.status);
+            if (!stateDefinition) {
+
+                log(`ERROR: Workflow state not found for ${item.id} trying to mutate state`);
+                throw new Error("An error occurred");
+
+            }
+            log(`Mutating state for item ${JSON.stringify(item)} - ${JSON.stringify(stateDefinition)}`);
+            item.status = stateDefinition.id;
+            item.public = !!stateDefinition.public;
+            item.readwrite = !!stateDefinition.readwrite;
 
         },
 
@@ -81,27 +108,45 @@ function workflow(log, tenantId, workflowId) {
 
 }
 
+async function mutateWorkflowStateForItem(log, tenantId, item) {
+
+    const workflow = await workflowForItem(log, tenantId, item);
+    if (!workflow) {
+
+        log(`ERROR: default workflow state not found mutating state for item ${item.id}, ${tenantId}`);
+        throw new Error("An error occurred");
+
+    }
+    await workflow.mutateStateForItem(item);
+
+}
+
 async function workflowForItem(log, tenantId, item) {
 
     if (!item) throw new Error("Item not specified");
     if (!tenantId) throw new Error("TenantId not specified");
-
     const workflowId = item.workflow;
     const disposition = item.disposition;
-    let record;
-    if (workflowId)
-        record = await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
-    else if (disposition) {
+    const cacheKey = [tenantId, "workflow-for-item", workflowId, disposition];
+    const record = await readThrough(cacheKey, async () => {
 
-        record = (await listRows(log, "TenantWorkflows", tenantId, [
-            ["default eq ?", true],
-            ["disposition eq ?", disposition]
-        ]))[0];
+        if (workflowId)
+            return await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
+        else if (disposition) {
 
-    }
+            return (await listRows(log, "TenantWorkflows", tenantId, [
+                ["default eq ?", true],
+                ["disposition eq ?", disposition]
+            ]))[0];
+
+        }
+        return null;
+
+    }, { expiry: WORKFLOW_CACHE_EXPIRY_MS }, log);
     if (!record) {
 
         log(`WARN: missing workflow for ${item.id} in ${tenantId}`);
+        await invalidatePrefix(cacheKey);
         return null;
 
     }
@@ -109,5 +154,4 @@ async function workflowForItem(log, tenantId, item) {
 
 }
 
-
-module.exports = { workflow, workflowForItem };
+module.exports = { workflow, workflowForItem, mutateWorkflowStateForItem };

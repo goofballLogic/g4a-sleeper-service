@@ -6,8 +6,6 @@ const { user: theUser } = require("../domain/user");
 const or500 = require("../lib/or500");
 const { frame } = require("jsonld");
 
-const entitlements = require("../domain/entitlements");
-
 const app = express();
 
 const authMiddleware = initializePassport(app);
@@ -68,8 +66,7 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
         const userAttributes = await user.fetchADAttributes();
         const displayName = `Grants by ${userAttributes.givenName} ${userAttributes.surname}`;
         await tenant.ensureExists({ name: "Default tenant", displayName });
-        const defaultGroupPermissions = JSON.stringify([entitlements.global.CREATE_DOCUMENT]);
-        const adminsGroup = await tenant.fetchOrCreateGroup("Owners", defaultGroupPermissions);
+        const adminsGroup = await tenant.fetchOrCreateGroup("Owners", "");
         const userEntry = await tenant.ensureUserExists(userId, { defaultTenantId });
         await adminsGroup.ensureGroupMembership(userEntry);
         await tenant.ensureDefaultWorkflows(workflows);

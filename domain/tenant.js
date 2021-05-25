@@ -2,7 +2,8 @@ const { upsertRow, createRow, listRows, fetchRow, deleteRow, createRowIfNotExist
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
-const { workflowForItem, workflow: theWorkflow } = require("./workflow");
+const { workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
+const { public } = require("./public");
 
 function commonDefaults() {
 
@@ -143,7 +144,7 @@ function tenant(log, tenantId) {
                     const allowedPartStatii = allowedForDisposition[existing.status];
                     if (!allowedPartStatii) {
 
-                        ret.failure = `Cannot modifry ${existing.disposition} when in ${existing.status} status`;
+                        ret.failure = `Cannot modify ${existing.disposition} when in ${existing.status} status`;
 
                     } else if (!allowedPartStatii.includes(part)) {
 
@@ -251,6 +252,8 @@ function tenant(log, tenantId) {
             await invalidatePrefix([tenantId, "listDocuments"]);
             return await readThrough([tenantId, docId], async () => {
 
+                await mutateWorkflowStateForItem(log, tenantId, item);
+                await public(log).invalidateForTenant(tenantId);
                 return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
 
             });
@@ -291,9 +294,13 @@ function tenant(log, tenantId) {
                     tenant: tenantId
                 };
 
+                await mutateWorkflowStateForItem(log, tenantId, data);
+
                 const created = await createRow(log, "TenantDocuments", tenantId, id, data);
 
                 await invalidatePrefix([tenantId, id]);
+                await public(log).invalidateForTenant(tenantId);
+
                 return created;
 
             }
@@ -333,6 +340,7 @@ function tenant(log, tenantId) {
 
             }
             await invalidatePrefix([tenantId, id]);
+            await invalidatePrefix([tenantId, "listDocuments"]);
             return created;
 
         }
@@ -406,7 +414,7 @@ function whiteListValues(log, values) {
             const isValid = validKeys.test(key) && !blacklist.includes(key.toLowerCase());
             if (!isValid) {
 
-                log(`${new Error(`Dropping key ${key}`).stack}`);
+                log(`WARN: Dropping key ${key}`);
 
             } else {
 

@@ -62,17 +62,16 @@ function user(log, userId) {
 
         async fetchPublicDocuments(tenantId, id) {
 
-            const publicStatus = await fetchPublicStatusForTenant(tenantId);
-            return await listRows(log, "TenantDocuments", null, [["status eq ?", publicStatus]]);
+            return await listRows(log, "TenantDocuments", null, [
+                ["public eq ?", true]
+            ]);
 
         },
 
         async fetchPublicDocument(tenantId, id, options) {
 
             const doc = await fetchRow(log, "TenantDocuments", tenantId, id);
-
-            const publicStatus = await fetchPublicStatusForTenant(tenantId);
-            if (doc.status !== publicStatus) return null;
+            if (!doc.public) return null;
 
             if (options && options.include) {
 

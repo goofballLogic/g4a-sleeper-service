@@ -1,5 +1,8 @@
+const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
 const { listRows, fetchRow } = require("../lib/rows");
 const { fetchPublicStatusForTenant } = require("./status");
+
+const PUBLIC_DOCUMENTS_CACHE_EXPIRY = process.env.PUBLIC_DOCUMENTS_CACHE_EXPIRY || (1000 * 60 * 5);
 
 module.exports = {
 
@@ -9,11 +12,14 @@ module.exports = {
 
             async fetchDocumentsByTenant(tenantId) {
 
-                const publicStatus = await fetchPublicStatusForTenant(tenantId);
-                const conditions = [
-                    ["status eq ?", publicStatus]
-                ];
-                return await listRows(log, "TenantDocuments", tenantId, conditions);
+                return await readThrough([tenantId, "pulbic-documents"], async () => {
+
+                    const conditions = [
+                        ["public eq ?", true]
+                    ];
+                    return await listRows(log, "TenantDocuments", tenantId, conditions);
+
+                }, { expiry: PUBLIC_DOCUMENTS_CACHE_EXPIRY }, log);
 
             },
 
@@ -24,10 +30,16 @@ module.exports = {
                     displayName: fetched.displayName
                 } : null;
 
+            },
+
+            async invalidateForTenant(tenantId) {
+
+                await invalidatePrefix([tenantId, "public-documents"]);
+
             }
 
         };
 
-    }
+    },
 
 };
