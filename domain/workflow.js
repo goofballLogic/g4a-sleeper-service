@@ -15,9 +15,32 @@ function workflow(log, tenantId, workflowId) {
 
     return {
 
-        async fetch() {
+        async fetch(options) {
 
-            return await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
+            return await readThrough([tenantId, workflowId, options], async () => {
+
+                const record = await fetchRow(log, "TenantWorkflows", tenantId, workflowId);
+                if (options && options.include) {
+
+                    const includes = options.include.split(",").map(x => x.trim()).filter(x => x);
+                    for (const include of includes) {
+
+                        if (include === "workflow") {
+
+                            record.workflow = await this.fetchDefinition();
+
+                        } else {
+
+                            log(`WARN: Invalid workflow include requested: ${include}`);
+
+                        }
+
+                    }
+
+                }
+                return record;
+
+            }, null, log);
 
         },
 

@@ -66,8 +66,9 @@ app.get("/api/documents/workflows/:tid/:id", requireUserTenancy, or500(async (re
 
     const { tid, id } = req.params;
     const { context } = req;
+    const { include } = req.query;
     const log = context.log.bind(context);
-    const item = await theWorkflow(log, tid, id).fetch();
+    const item = await theWorkflow(log, tid, id).fetch({ include });
     if (item)
         res.status(200).json({ item });
     else
