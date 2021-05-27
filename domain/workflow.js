@@ -11,6 +11,8 @@ function commonDefaults() {
 
 }
 
+const asArray = x => Array.isArray(x) ? x : x ? [x] : [];
+
 function workflow(log, tenantId, workflowId) {
 
     return {
@@ -41,6 +43,24 @@ function workflow(log, tenantId, workflowId) {
                 return record;
 
             }, null, log);
+
+        },
+
+        async fetchValidTransitions(currentStatus) {
+
+            if (!currentStatus) {
+
+                throw new Error("Not implemented");
+
+            }
+            const state = await this.fetchDefinitionState(currentStatus);
+            if (!state) {
+
+                log(`ERROR: Unable to determine valid transitions for state ${currenStatus} in workflow ${workflowId} in tenant ${tenantId}`);
+                return [];
+
+            }
+            return asArray(state.transitions);
 
         },
 

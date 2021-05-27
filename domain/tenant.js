@@ -187,7 +187,17 @@ function tenant(log, tenantId) {
                     ? [["disposition eq ?", options.disposition]]
                     : null;
                 const allRows = await listRows(log, "TenantDocuments", tenantId, conditions);
-                return allRows.filter(x => (!x.status) || (x.status !== "archived"));
+                let validRows = allRows.filter(x => (!x.status) || (x.status !== "archived"));
+                if (options && options.include) {
+
+                    validRows = await Promise.all(validRows.map(row =>
+
+                        decorateItemWithIncludedProperties(options.include, row.id, row)
+
+                    ));
+
+                }
+                return validRows;
 
             });
 
@@ -357,6 +367,11 @@ function tenant(log, tenantId) {
 
                     const workflow = await workflowForItem(log, tenantId, item);
                     item[include] = workflow && await workflow.fetchDefinition();
+
+                } if (include === "transitions") {
+
+                    const workflow = await workflowForItem(log, tenantId, item);
+                    item[include] = workflow && await workflow.fetchValidTransitions(item.status);
 
                 } else {
 
