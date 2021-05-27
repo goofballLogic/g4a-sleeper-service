@@ -3,6 +3,7 @@ const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
 const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
 
 const WORKFLOW_CACHE_EXPIRY_MS = process.env.WORKFLOW_CACHE_EXPIRY_MS || (1000 * 60 * 5);
+const safeEncode = x => x.toLowerCase().replace(/\W/g, "_");
 
 function commonDefaults() {
 
@@ -146,8 +147,8 @@ function workflow(log, tenantId, workflowId) {
             );
             if (isNew) {
 
-                log(`Adding new workflow ${workflowDefinition.name} for ${tenantId}`);
-                await putJSONBlob(log, `workflow/${workflowDefinition.name}`, tenantId, workflowDefinition);
+                log(`Adding new workflow ${workflowDefinition.name} (${workflowId}) for ${tenantId}`);
+                await putJSONBlob(log, `workflow/${workflowId}`, tenantId, workflowDefinition);
 
             }
 
@@ -203,4 +204,9 @@ async function workflowForItem(log, tenantId, item) {
 
 }
 
-module.exports = { workflow, workflowForItem, mutateWorkflowStateForItem };
+module.exports = {
+    safeEncode,
+    workflow,
+    workflowForItem,
+    mutateWorkflowStateForItem
+};

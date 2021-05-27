@@ -5,6 +5,7 @@ const { tenant: theTenant } = require("../domain/tenant");
 const { user: theUser } = require("../domain/user");
 const or500 = require("../lib/or500");
 const { frame } = require("jsonld");
+const { workflow } = require("../domain/workflow");
 
 const app = express();
 
@@ -40,7 +41,9 @@ app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
 module.exports = createHandler(app);
 
 const defaultsShape = {
-    "@context": { "@vocab": "https://tangentvision.com/g4a/vocab#" },
+    "@context": {
+        "@vocab": "https://tangentvision.com/g4a/vocab#"
+    },
     "@type": "Workflow"
 };
 
@@ -57,6 +60,9 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
     const json = await resp.json();
     const framed = await frame(json, defaultsShape);
     const workflows = framed["@graph"] || [];
+    workflows.forEach(w => {
+        w.id = w["@id"].replace("https://tangentvision.com/g4a/workflows/", "");
+    });
 
     const tenant = theTenant(log, defaultTenantId);
     const user = theUser(log, userId);

@@ -2,7 +2,7 @@ const { upsertRow, createRow, listRows, fetchRow, deleteRow, createRowIfNotExist
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
-const { workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
+const { safeEncode, workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
 const { public } = require("./public");
 
 function commonDefaults() {
@@ -43,7 +43,8 @@ function tenant(log, tenantId) {
                     throw new Error(
                         `Invalid default workflow definition for tenant ${tenantId}: ${JSON.stringify(defaultWorkflow)}`
                     );
-                const workflow = theWorkflow(log, tenantId, defaultWorkflow.name);
+                const workflowId = defaultWorkflow.id;
+                const workflow = theWorkflow(log, tenantId, workflowId);
                 await workflow.ensureExists({
                     default: true,
                     ...defaultWorkflow
