@@ -1,8 +1,8 @@
-const { upsertRow, createRow, listRows, fetchRow, deleteRow, createRowIfNotExists } = require("../lib/rows");
+const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
-const { safeEncode, workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
+const { workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
 const { public } = require("./public");
 
 function commonDefaults() {
@@ -218,6 +218,31 @@ function tenant(log, tenantId) {
 
         },
 
+        async fetchGrandChildDocuments(docId, options) {
+
+            return await readThrough([tenantId, docId, options, "grandchildren"], async () => {
+
+                const conditions = [
+                    ["grandParentId eq ?", docId],
+                    ["grandParentIdTenant eq guid?", tenantId]
+                ];
+                if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
+                console.log(conditions);
+                const items = await listRows(log, "TenantDocuments", null, conditions);
+                console.log(items);
+                const { include } = options;
+                let promised = items.map(item => decorateItemWithUserInformation(item));
+                if (include)
+                    promised = promised.concat(
+                        items.map(item => decorateItemWithIncludedProperties(include, item.id, item))
+                    );
+                await Promise.all(promised);
+                return items;
+
+            });
+
+        },
+
         async fetchChildDocuments(docId, options) {
 
             return await readThrough([tenantId, docId, options, "children"], async () => {
@@ -226,6 +251,8 @@ function tenant(log, tenantId) {
                     ["parentId eq ?", docId],
                     ["parentIdTenant eq guid?", tenantId]
                 ];
+                if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
+                console.log(conditions);
                 const items = await listRows(log, "TenantDocuments", null, conditions);
                 const { include } = options;
                 let promised = items.map(item => decorateItemWithUserInformation(item));
@@ -315,7 +342,7 @@ function tenant(log, tenantId) {
                     tenant: tenantId
                 };
 
-                await mutateWorkflowStateForItem(log, tenantId, data);
+                await mutateWorkflowStateForItem(log, tenantId, null, data);
 
                 const created = await createRow(log, "TenantDocuments", tenantId, id, data);
 
@@ -343,9 +370,12 @@ function tenant(log, tenantId) {
                 id,
                 tenant: tenantId,
                 parentId,
-                parentIdTenant
+                parentIdTenant,
+                grandParentId: fetched.parentId,
+                grandParentIdTenant: fetched.parentIdTenant
             };
 
+            await mutateWorkflowStateForItem(log, tenantId, null, data);
             return await cloneDocument(id, data, parentId, parentIdTenant);
 
         },
@@ -367,9 +397,12 @@ function tenant(log, tenantId) {
                 id,
                 tenant: tenantId,
                 parentId,
-                parentIdTenant
+                parentIdTenant,
+                grandParentId: fetched.parentId,
+                grandParentIdTenant: fetched.parentIdTenant,
             };
 
+            await mutateWorkflowStateForItem(log, tenantId, null, data);
             return await cloneDocument(id, data, parentId, parentIdTenant);
 
         },

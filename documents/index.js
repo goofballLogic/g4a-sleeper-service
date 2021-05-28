@@ -90,13 +90,32 @@ app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) =>
 
 }));
 
+app.get("/api/documents/:tid/:id/grandchildren", requireUserTenancy, or500(async (req, res) => {
+
+    const { tid, id } = req.params;
+    let { include, readwrite } = req.query;
+    const options = {};
+    if (include) options.include = include.split(",").filter(x => x);
+    if (readwrite === "true") options.readwrite = true;
+    if (readwrite === "false") options.readwrite = false;
+
+    const log = req.context.log.bind(req.context);
+    const items = await theTenant(log, tid).fetchGrandChildDocuments(id, options);
+    res.status(200).json({ items });
+
+}));
+
 app.get("/api/documents/:tid/:id/children", requireUserTenancy, or500(async (req, res) => {
 
     const { tid, id } = req.params;
-    let { include } = req.query;
-    if (include) include = include.split(",").filter(x => x);
+    let { include, readwrite } = req.query;
+    const options = {};
+    if (include) options.include = include.split(",").filter(x => x);
+    if (readwrite === "true") options.readwrite = true;
+    if (readwrite === "false") options.readwrite = false;
+
     const log = req.context.log.bind(req.context);
-    const items = await theTenant(log, tid).fetchChildDocuments(id, { include });
+    const items = await theTenant(log, tid).fetchChildDocuments(id, options);
     res.status(200).json({ items });
 
 }));
