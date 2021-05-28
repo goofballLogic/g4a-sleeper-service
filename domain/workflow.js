@@ -109,7 +109,6 @@ function workflow(log, tenantId, workflowId) {
             }
             log(`Mutating state for item ${nextValues.id} from ${previousValues?.status} to ${nextStateDefinition.id}`);
             assignStatePropertiesToItem(nextValues, nextStateDefinition);
-
             if (previousValues) {
 
                 const previousStateDefinition = await this.fetchDefinitionState(previousValues.status);
@@ -121,7 +120,7 @@ function workflow(log, tenantId, workflowId) {
                 }
                 if (previousStateDefinition.id !== nextStateDefinition.id) {
 
-                    const transition = previousStateDefinition.transitions?.find(t => t.id === nextStateDefinition.id);
+                    const transition = asArray(previousStateDefinition.transitions).find(t => t.id === nextStateDefinition.id);
                     if (!transition) {
 
                         log(`ERROR: Transition not found for ${previousValues.id} trying to mutate state from ${previousValues.status} to ${nextValues.status}`);
@@ -149,12 +148,7 @@ function workflow(log, tenantId, workflowId) {
                 return { failure: "Existing state invalid" };
 
             }
-            const validTransitions = Array.isArray(fromState.transitions)
-                ? fromState.transitions
-                : fromState.transitions
-                    ? [fromState.transitions]
-                    : [];
-
+            const validTransitions = asArray(fromState.transitions);
             if (!validTransitions.find(x => x.id === toStateId)) {
 
                 return {

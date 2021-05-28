@@ -14,16 +14,16 @@ function commonDefaults() {
 
 const newid = () => `${Date.now()}_${Math.round(Math.random() * 1000000)}`;
 
-const allowedDispositionStatusParts = {
-    "application": {
-        "draft": "application"
-    },
-    "grant": {
-        "draft": "content"
-    }
+function validateDispositionStatusParts(disposition, partName) {
+
+    console.warn("Implement this");
+    return true;
+
 }
 
 function tenant(log, tenantId) {
+
+    log("ERROR: Pending implementation: validateDispositionStatusParts");
 
     return {
 
@@ -135,25 +135,31 @@ function tenant(log, tenantId) {
 
             } else {
 
-                const allowedForDisposition = allowedDispositionStatusParts[existing.disposition];
-                if (!allowedForDisposition) {
 
-                    ret.failure = `Cannot add parts to a ${existing.disposition} document`;
+                if (!part) {
 
-                } else {
-
-                    const allowedPartStatii = allowedForDisposition[existing.status];
-                    if (!allowedPartStatii) {
-
-                        ret.failure = `Cannot modify ${existing.disposition} when in ${existing.status} status`;
-
-                    } else if (!allowedPartStatii.includes(part)) {
-
-                        ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
-
-                    }
+                    ret.failure = "Invalid part name";
 
                 }
+                // const allowedForDisposition = validateDispositionStatusParts[existing.disposition];
+                // if (!allowedForDisposition) {
+
+                //     ret.failure = `Cannot add parts to a ${existing.disposition} document`;
+
+                // } else {
+
+                //     const allowedPartStatii = allowedForDisposition[existing.status];
+                //     if (!allowedPartStatii) {
+
+                //         ret.failure = `Cannot modify ${existing.disposition} when in ${existing.status} status`;
+
+                //     } else if (!allowedPartStatii.includes(part)) {
+
+                //         ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
+
+                //     }
+
+                // }
 
             }
             return ret;
@@ -273,6 +279,7 @@ function tenant(log, tenantId) {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
                 const { include } = options || {};
+                await decorateItemWithUserInformation(item)
                 if (include)
                     await decorateItemWithIncludedProperties(include, docId, item);
                 return item;
@@ -320,6 +327,21 @@ function tenant(log, tenantId) {
             await putJSONBlob(log, `${docId}-${partName}`, tenantId, Buffer.from(content));
             await this.patchDocument(docId, { updated: new Date().toISOString() });
             await invalidatePrefix([tenantId, docId]);
+
+        },
+
+        async fetchDocumentPart(docId, partName) {
+
+            try {
+
+                return await fetchJSONBlob(log, `${docId}-${partName}`, tenantId);
+
+            } catch (err) {
+
+                if (err && err.statusCode == 404) return null;
+                throw err;
+
+            }
 
         },
 

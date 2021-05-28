@@ -195,6 +195,25 @@ app.put("/api/documents/:tid/:id/content", requireUserTenancy, or500(async (req,
 
 }));
 
+app.get("/api/documents/:tid/:id/parts/:part", requireUserTenancy, or500(async (req, res) => {
+
+    const { context, params, body } = req;
+    const { tid, id, part } = params;
+    const log = context.log.bind(context);
+    const tenant = theTenant(log, tid);
+    const item = await tenant.fetchDocumentPart(id, part);
+    if (!item) {
+
+        res.status(404).send("Not found");
+
+    } else {
+
+        res.status(200).send({ item });
+
+    }
+
+}));
+
 app.put("/api/documents/:tid/:id/parts/:part", requireUserTenancy, or500(async (req, res) => {
 
     const { context, params, body } = req;
