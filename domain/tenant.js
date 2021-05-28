@@ -258,14 +258,24 @@ function tenant(log, tenantId) {
 
             const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
             if (!item) return null;
+            const original = JSON.parse(JSON.stringify(item));
             Object.assign(item, values);
             await invalidatePrefix([tenantId, docId]);
             await invalidatePrefix([tenantId, "listDocuments"]);
             return await readThrough([tenantId, docId], async () => {
 
-                await mutateWorkflowStateForItem(log, tenantId, item);
+                const undoMutation = await mutateWorkflowStateForItem(log, tenantId, original, item);
                 await public(log).invalidateForTenant(tenantId);
-                return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
+                try {
+
+                    return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
+
+                } catch (err) {
+
+                    await undoMutation();
+                    throw err;
+
+                }
 
             });
 
@@ -318,6 +328,28 @@ function tenant(log, tenantId) {
 
         },
 
+        async cloneDocumentForTenant(values) {
+
+            const parentId = values["clone-id"];
+            const parentIdTenant = values["clone-tenant"];
+            const fetched = await fetchRow(log, "TenantDocuments", parentIdTenant, parentId);
+
+            const id = newid();
+
+            const data = {
+                ...fetched,
+                ...whiteListValues(log, values),
+                ...commonDefaults(),
+                id,
+                tenant: tenantId,
+                parentId,
+                parentIdTenant
+            };
+
+            return await cloneDocument(id, data, parentId, parentIdTenant);
+
+        },
+
         async cloneDocumentForUser(user, values) {
 
             const parentId = values["clone-id"];
@@ -338,24 +370,36 @@ function tenant(log, tenantId) {
                 parentIdTenant
             };
 
-            const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+            return await cloneDocument(id, data, parentId, parentIdTenant);
 
-            try {
+        },
 
-                await copyPrefixedBlobs(log, `${parentId}-`, parentIdTenant, `${id}-`, tenantId);
+        async deleteDocument(id) {
 
-            } catch (err) {
-
-                await deleteRow(log, "TenantDocuments", tenantId, id);
-                throw err;
-
-            }
+            await deleteRow(log, "TenantDocuments", tenantId, id);
             await invalidatePrefix([tenantId, id]);
             await invalidatePrefix([tenantId, "listDocuments"]);
-            return created;
 
         }
 
+    }
+
+    async function cloneDocument(id, data, parentId, parentIdTenant) {
+        const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+
+        try {
+
+            await copyPrefixedBlobs(log, `${parentId}-`, parentIdTenant, `${id}-`, tenantId);
+
+        } catch (err) {
+
+            await deleteRow(log, "TenantDocuments", tenantId, id);
+            throw err;
+
+        }
+        await invalidatePrefix([tenantId, id]);
+        await invalidatePrefix([tenantId, "listDocuments"]);
+        return created;
     }
 
     async function decorateItemWithIncludedProperties(include, docId, item) {

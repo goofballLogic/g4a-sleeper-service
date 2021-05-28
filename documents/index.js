@@ -106,8 +106,8 @@ app.get("/api/documents/:tid", requireUserTenancy, or500(async (req, res) => {
     const { tid } = req.params;
     const { disposition } = req.query;
     let { include } = req.query;
-    if (include) include = include.split(",").filter(x => x);
     const log = req.context.log.bind(req.context);
+    if (include) include = include.split(",").filter(x => x);
     const items = await theTenant(log, tid).listDocuments({ disposition, include });
     res.json({ items });
 

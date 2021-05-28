@@ -1,6 +1,10 @@
 const { listRows, createRowIfNotExists, fetchRow } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
 const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
+/* circular ref */
+let theTenant = null;
+setTimeout(() => { theTenant = require("./tenant").tenant; });
+/* end circular ref */
 
 const WORKFLOW_CACHE_EXPIRY_MS = process.env.WORKFLOW_CACHE_EXPIRY_MS || (1000 * 60 * 5);
 const safeEncode = x => x.toLowerCase().replace(/\W/g, "_");
@@ -77,30 +81,91 @@ function workflow(log, tenantId, workflowId) {
 
         },
 
+        async fetchDefinitionDefaultState() {
+
+            return await this.fetchDefinitionState();
+
+        },
+
         async fetchDefinitionState(stateId) {
 
             const definition = await this.fetchDefinition();
             if (!definition) return { failure: "Workflow missing" };
             const criteria = stateId ? x => x.id === stateId : x => x.default;
             const found = definition.workflow?.find(criteria);
-            if (!found) log(`WARN: Workflow state not found: ${stateId}`);
+            if (!found) log(`WARN: Workflow state not found: ${stateId || "(default)"}`);
             return found;
 
         },
 
-        async mutateStateForItem(item) {
+        async mutateStateForItem(previousValues, nextValues) {
 
-            const stateDefinition = await this.fetchDefinitionState(item.status);
-            if (!stateDefinition) {
+            const previousStateDefinition = await this.fetchDefinitionState(previousValues.status);
+            if (!previousStateDefinition) {
 
-                log(`ERROR: Workflow state not found for ${item.id} trying to mutate state`);
+                log(`ERROR: Previous workflow state not found for ${previousValues.id} trying to mutate state from ${previousValues.status}`);
                 throw new Error("An error occurred");
 
             }
-            log(`Mutating state for item ${JSON.stringify(item)} - ${JSON.stringify(stateDefinition)}`);
-            item.status = stateDefinition.id;
-            item.public = !!stateDefinition.public;
-            item.readwrite = !!stateDefinition.readwrite;
+            const nextStateDefinition = await this.fetchDefinitionState(nextValues.status);
+            if (!nextStateDefinition) {
+
+                log(`ERROR: Workflow state not found for ${nextValues.id} trying to mutate state`);
+                throw new Error("An error occurred");
+
+            }
+            log(`Mutating state for item ${JSON.stringify(nextValues)} - ${JSON.stringify(nextStateDefinition)}`);
+            nextValues.status = nextStateDefinition.id;
+            nextValues.public = !!nextStateDefinition.public;
+            nextValues.readwrite = !!nextStateDefinition.readwrite;
+
+            const transition = previousStateDefinition.transitions?.find(t => t.id === nextStateDefinition.id);
+
+            if (transition.clone) {
+
+                const cloneValues = JSON.parse(JSON.stringify(nextValues));
+                const targetOwner = transition.clone["target-owner"];
+                let targetTenantId;
+                let targetUserId;
+                switch (targetOwner) {
+                    case "parent":
+                        targetTenantId = nextValues.parentIdTenant;
+                        break;
+                    case "same":
+                        targetTenantId = tenantId;
+                        break;
+                    default:
+                        if (targetOwner) throw new Error(`Invalid target owner in transition clone: ${JSON.stringify(transition)}`);
+                        targetTenantId = tenantId;
+                }
+                cloneValues["clone-id"] = cloneValues.id;
+                cloneValues["clone-tenant"] = tenantId;
+
+
+
+                const targetWorkflowId = transition.clone["target-workflow"];
+                if (!targetWorkflowId)
+                    throw new Error(`Invalid target workflow in transition clone: ${JSON.stringify(transition)}`);
+                const targetWorkflow = workflow(log, targetTenantId, targetWorkflowId);
+                const targetWorkflowStatus = await targetWorkflow.fetchDefinitionDefaultState();
+                const targetWorkflowDisposition = (await targetWorkflow.fetch()).disposition;
+                if (!targetWorkflowStatus)
+                    throw new Error(`No default workflow status for workflow ${targetWorkflowId} in tenant ${targetTenantId}`);
+                cloneValues["workflow"] = targetWorkflowId;
+                cloneValues["status"] = targetWorkflowStatus.id;
+                cloneValues["disposition"] = targetWorkflowDisposition;
+
+                const cloneTargetTenant = theTenant(log, targetTenantId);
+                const created = await cloneTargetTenant.cloneDocumentForTenant(cloneValues);
+                log(`Cloned document ${nextValues.id} as ${created.id} in tenant ${targetTenantId}`);
+                return async () => {
+
+                    log(`Deleting cloned document ${created.id} in tenant ${targetTenantId}`);
+                    await cloneTargetTenant.deleteDocument(created.id);
+
+                };
+
+            }
 
         },
 
@@ -158,16 +223,16 @@ function workflow(log, tenantId, workflowId) {
 
 }
 
-async function mutateWorkflowStateForItem(log, tenantId, item) {
+async function mutateWorkflowStateForItem(log, tenantId, previousValues, nextValues) {
 
-    const workflow = await workflowForItem(log, tenantId, item);
+    const workflow = await workflowForItem(log, tenantId, previousValues);
     if (!workflow) {
 
         log(`ERROR: default workflow state not found mutating state for item ${item.id}, ${tenantId}`);
         throw new Error("An error occurred");
 
     }
-    await workflow.mutateStateForItem(item);
+    return await workflow.mutateStateForItem(previousValues, nextValues);
 
 }
 
