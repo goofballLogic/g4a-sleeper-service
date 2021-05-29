@@ -1,5 +1,5 @@
 const { upsertRow, createRow, listRows, fetchRow, deleteRow } = require("../lib/rows");
-const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs } = require("../lib/blobs");
+const { fetchJSONBlob, putJSONBlob, copyPrefixedBlobs, fetchJSONBlobs } = require("../lib/blobs");
 const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
 const { workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
@@ -472,6 +472,11 @@ function tenant(log, tenantId) {
 
                     const workflow = await workflowForItem(log, tenantId, item);
                     item[include] = workflow && await workflow.fetchValidTransitions(item.status);
+
+                } else if (include.endsWith("*")) {
+
+                    const prefix = include.substring(0, include.length - 1);
+                    item[prefix] = await fetchJSONBlobs(log, `${docId}-${prefix}`, tenantId);
 
                 } else {
 
