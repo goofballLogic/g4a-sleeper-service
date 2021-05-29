@@ -475,6 +475,11 @@ function tenant(log, tenantId) {
                     const workflow = await workflowForItem(log, tenantId, item);
                     item[include] = workflow && await workflow.fetchValidTransitions(item.status);
 
+                } if (include === "values") {
+
+                    const workflow = await workflowForItem(log, tenantId, item);
+                    await workflow.decorateItemWithWorkflowValues(item);
+
                 } else if (include.endsWith("*")) {
 
                     const prefix = include.substring(0, include.length - 1);

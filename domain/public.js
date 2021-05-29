@@ -12,7 +12,7 @@ module.exports = {
 
             async fetchDocumentsByTenant(tenantId) {
 
-                return await readThrough([tenantId, "pulbic-documents"], async () => {
+                return await readThrough([tenantId, "public-documents"], async () => {
 
                     const conditions = [
                         ["public eq ?", true]
