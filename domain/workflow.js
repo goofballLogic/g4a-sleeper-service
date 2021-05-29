@@ -1,6 +1,10 @@
 const { listRows, createRowIfNotExists, fetchRow } = require("../lib/rows");
 const { fetchJSONBlob, putJSONBlob } = require("../lib/blobs");
 const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
+const extractors = {
+    "metadata": require("./extractors/metadata")
+};
+
 /* circular ref */
 let theTenant = null;
 setTimeout(() => { theTenant = require("./tenant").tenant; });
@@ -95,6 +99,35 @@ function workflow(log, tenantId, workflowId) {
             const found = definition.workflow?.find(criteria);
             if (!found) log(`WARN: Workflow state not found: ${stateId || "(default)"}`);
             return found;
+
+        },
+
+        async decorateItemWithWorkflowValues(item) {
+
+            const definition = await this.fetchDefinition();
+            if (!definition) return { failure: "Workflow missing" };
+
+            const fetching = [];
+            if (definition.values) {
+
+                for (const [extractor, spec] of Object.entries(definition.values)) {
+
+                    if (extractor in extractors) {
+
+                        fetching.push(extractors[extractor](log, spec).fetchValuesForItem(item));
+
+                    } else {
+
+                        log(`ERROR: Extractor ${extractor} not recognised in workflow ${workflowId}`);
+
+                    }
+
+                }
+
+            }
+            const fetched = await Promise.all(fetching);
+            console.log(fetched);
+            item.values = fetched.reduce((hash, values) => ({ ...hash, ...values }), {});
 
         },
 

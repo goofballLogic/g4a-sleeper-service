@@ -280,6 +280,8 @@ function tenant(log, tenantId) {
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
                 const { include } = options || {};
                 await decorateItemWithUserInformation(item)
+                const workflow = await workflowForItem(log, tenantId, item);
+                await workflow.decorateItemWithWorkflowValues(item);
                 if (include)
                     await decorateItemWithIncludedProperties(include, docId, item);
                 return item;
