@@ -190,9 +190,13 @@ function tenant(log, tenantId) {
 
             return await readThrough([tenantId, "listDocuments", JSON.stringify(options || {})], async () => {
 
-                const conditions = options && options.disposition
-                    ? [["disposition eq ?", options.disposition]]
-                    : null;
+                const conditions = [];
+                if (options) {
+
+                    if (options.disposition) conditions.push(["disposition eq ?", options.disposition]);
+                    if (options.parentTenant) conditions.push(["parentIdTenant eq guid?", options.parentTenant]);
+
+                }
                 const allRows = await listRows(log, "TenantDocuments", tenantId, conditions);
                 let validRows = allRows.filter(x => (!x.status) || (x.status !== "archived"));
                 if (options && options.include) {
@@ -278,12 +282,14 @@ function tenant(log, tenantId) {
             return await readThrough([tenantId, docId, options], async () => {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
-                const { include } = options || {};
-                await decorateItemWithUserInformation(item)
-                const workflow = await workflowForItem(log, tenantId, item);
-                await workflow.decorateItemWithWorkflowValues(item);
-                if (include)
-                    await decorateItemWithIncludedProperties(include, docId, item);
+                if (item) {
+                    const { include } = options || {};
+                    await decorateItemWithUserInformation(item)
+                    const workflow = await workflowForItem(log, tenantId, item);
+                    await workflow.decorateItemWithWorkflowValues(item);
+                    if (include)
+                        await decorateItemWithIncludedProperties(include, docId, item);
+                }
                 return item;
 
             });
@@ -511,6 +517,7 @@ function tenant(log, tenantId) {
 
     async function decorateItemWithUserInformation(item) {
 
+        if (!item) return;
         try {
 
             const { createdBy } = item;
