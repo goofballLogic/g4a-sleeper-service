@@ -135,8 +135,11 @@ function tenant(log, tenantId) {
 
             } else {
 
+                if (!existing.readwrite) {
 
-                if (!part) {
+                    ret.failure = "This item is not updateable";
+
+                } else if (!part) {
 
                     ret.failure = "Invalid part name";
 
@@ -171,7 +174,11 @@ function tenant(log, tenantId) {
             const ret = {};
 
             const existing = await this.fetchDocument(id);
-            if (existing) {
+            if (!existing.readwrite) {
+
+                ret.failure = "This item is not updateable";
+
+            } else if (existing) {
 
                 if (data && data.status && existing.status !== data.status) {
 
