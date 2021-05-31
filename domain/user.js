@@ -47,19 +47,6 @@ function user(log, userId) {
 
         },
 
-        async listDocuments(options) {
-
-            const { status, disposition } = options || {};
-            const publicStatus = await fetchPublicStatusForTenant(tenantId);
-            if (status && status !== publicStatus) throw new Error(`Invalid parameter status: ${status}`);
-
-            const criteria = [];
-            if (status) criteria.push(["status eq ?", status]);
-            if (disposition) criteria.push(["disposition eq ?", disposition]);
-            return await listRows(log, "TenantDocuments", userId, criteria);
-
-        },
-
         async fetchPublicDocuments(tenantId, id) {
 
             return await listRows(log, "TenantDocuments", null, [

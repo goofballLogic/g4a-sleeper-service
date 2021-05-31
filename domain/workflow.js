@@ -267,7 +267,7 @@ function assignStatePropertiesToItem(item, stateDefinition) {
 
 async function mutateWorkflowStateForItem(log, tenantId, previousValues, nextValues) {
 
-    const workflow = await workflowForItem(log, tenantId, previousValues || nextValues);
+    const workflow = await workflowForItem(log, previousValues || nextValues);
     if (!workflow) {
 
         log(`ERROR: default workflow state not found mutating state for item ${nextValues.id}, ${tenantId}`);
@@ -278,10 +278,10 @@ async function mutateWorkflowStateForItem(log, tenantId, previousValues, nextVal
 
 }
 
-async function workflowForItem(log, tenantId, item) {
+async function workflowForItem(log, item) {
 
     if (!item) throw new Error("Item not specified");
-    if (!tenantId) throw new Error("TenantId not specified");
+    const tenantId = item.tenant;
     const workflowId = item.workflow;
     const disposition = item.disposition;
     const cacheKey = [tenantId, "workflow-for-item", workflowId, disposition];

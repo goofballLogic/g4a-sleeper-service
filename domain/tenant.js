@@ -24,6 +24,7 @@ function validateDispositionStatusParts(disposition, partName) {
 
 function tenant(log, tenantId) {
 
+    //tenantId = "d8601f62-a24f-48d7-9cb9-0305d79508fe";
     log("ERROR: Pending implementation: validateDispositionStatusParts");
 
     return {
@@ -175,7 +176,7 @@ function tenant(log, tenantId) {
             const ret = {};
 
             const existing = await this.fetchDocument(id);
-            if (!existing.readwrite) {
+            if (existing && !existing.readwrite) {
 
                 const comparison = detailedDiff(existing, data);
                 const upserted = Object.keys(comparison.added).concat(Object.keys(comparison.updated));
@@ -190,7 +191,7 @@ function tenant(log, tenantId) {
 
                 if (data && data.status && existing.status !== data.status) {
 
-                    const workflow = await workflowForItem(log, tenantId, existing);
+                    const workflow = await workflowForItem(log, existing);
                     const validation = await workflow.validateTransition(existing.status, data.status);
                     if (!validation.isValid) ret.failure = validation.failure;
 
@@ -209,9 +210,10 @@ function tenant(log, tenantId) {
                 if (options) {
 
                     if (options.disposition) conditions.push(["disposition eq ?", options.disposition]);
-                    if (options.parentTenant) conditions.push(["parentIdTenant eq guid?", options.parentTenant]);
+                    if (options.createdBy) conditions.push(["createdBy eq guid?", options.createdBy]);
 
                 }
+                console.log(conditions);
                 const allRows = await listRows(log, "TenantDocuments", tenantId, conditions);
                 let validRows = allRows.filter(x => (!x.status) || (x.status !== "archived"));
                 if (options && options.include) {
@@ -291,13 +293,14 @@ function tenant(log, tenantId) {
 
         async fetchDocument(docId, options) {
 
+            console.log(tenantId, docId, options);
             return await readThrough([tenantId, docId, options], async () => {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
                 if (item) {
                     const { include } = options || {};
                     await decorateItemWithUserInformation(item)
-                    const workflow = await workflowForItem(log, tenantId, item);
+                    const workflow = await workflowForItem(log, item);
                     await workflow.decorateItemWithWorkflowValues(item);
                     if (include)
                         await decorateItemWithIncludedProperties(include, docId, item);
@@ -418,7 +421,7 @@ function tenant(log, tenantId) {
             };
 
             await mutateWorkflowStateForItem(log, tenantId, null, data);
-            return await cloneDocument(id, data, parentId, parentIdTenant);
+            return await cloneDocument(id, tenantId, data, parentId, parentIdTenant);
 
         },
 
@@ -437,15 +440,15 @@ function tenant(log, tenantId) {
                 ...commonDefaults(),
                 createdBy,
                 id,
-                tenant: tenantId,
+                tenant: parentIdTenant,
                 parentId,
                 parentIdTenant,
                 grandParentId: fetched.parentId,
                 grandParentIdTenant: fetched.parentIdTenant,
             };
 
-            await mutateWorkflowStateForItem(log, tenantId, null, data);
-            return await cloneDocument(id, data, parentId, parentIdTenant);
+            await mutateWorkflowStateForItem(log, parentIdTenant, null, data);
+            return await cloneDocument(id, parentIdTenant, data, parentId, parentIdTenant);
 
         },
 
@@ -459,8 +462,8 @@ function tenant(log, tenantId) {
 
     }
 
-    async function cloneDocument(id, data, parentId, parentIdTenant) {
-        const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+    async function cloneDocument(id, documentTenantId, data, parentId, parentIdTenant) {
+        const created = await createRow(log, "TenantDocuments", documentTenantId, id, data);
 
         try {
 
@@ -485,17 +488,17 @@ function tenant(log, tenantId) {
 
                 if (include === "workflow") {
 
-                    const workflow = await workflowForItem(log, tenantId, item);
+                    const workflow = await workflowForItem(log, item);
                     item[include] = workflow && await workflow.fetchDefinition();
 
                 } if (include === "transitions") {
 
-                    const workflow = await workflowForItem(log, tenantId, item);
+                    const workflow = await workflowForItem(log, item);
                     item[include] = workflow && await workflow.fetchValidTransitions(item.status);
 
                 } if (include === "values") {
 
-                    const workflow = await workflowForItem(log, tenantId, item);
+                    const workflow = await workflowForItem(log, item);
                     await workflow.decorateItemWithWorkflowValues(item);
 
                 } else if (include.endsWith("*")) {
