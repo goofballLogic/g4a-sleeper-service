@@ -126,7 +126,6 @@ function workflow(log, tenantId, workflowId) {
 
             }
             const fetched = await Promise.all(fetching);
-            console.log(fetched);
             item.values = fetched.reduce((hash, values) => ({ ...hash, ...values }), {});
 
         },

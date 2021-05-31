@@ -4,6 +4,7 @@ const { invalidatePrefix, readThrough } = require("../lib/crap-cache");
 const { user: theUser } = require("./user");
 const { workflowForItem, workflow: theWorkflow, mutateWorkflowStateForItem } = require("./workflow");
 const { public } = require("./public");
+const { detailedDiff } = require("deep-object-diff");
 
 function commonDefaults() {
 
@@ -176,7 +177,14 @@ function tenant(log, tenantId) {
             const existing = await this.fetchDocument(id);
             if (!existing.readwrite) {
 
-                ret.failure = "This item is not updateable";
+                const comparison = detailedDiff(existing, data);
+                const upserted = Object.keys(comparison.added).concat(Object.keys(comparison.updated));
+                if (upserted.some(x => x !== "status")) {
+
+                    log(`WARN: can't update non-writeable item ${item.id} with added/updated keys ${added.join(", ")}`);
+                    ret.failure = "This item is not updateable";
+
+                }
 
             } else if (existing) {
 
@@ -244,9 +252,7 @@ function tenant(log, tenantId) {
                     ["grandParentIdTenant eq guid?", tenantId]
                 ];
                 if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
-                console.log(conditions);
                 const items = await listRows(log, "TenantDocuments", null, conditions);
-                console.log(items);
                 const { include } = options;
                 let promised = items.map(item => decorateItemWithUserInformation(item));
                 if (include)
@@ -269,7 +275,6 @@ function tenant(log, tenantId) {
                     ["parentIdTenant eq guid?", tenantId]
                 ];
                 if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
-                console.log(conditions);
                 const items = await listRows(log, "TenantDocuments", null, conditions);
                 const { include } = options;
                 let promised = items.map(item => decorateItemWithUserInformation(item));
