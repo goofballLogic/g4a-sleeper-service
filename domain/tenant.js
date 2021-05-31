@@ -114,8 +114,11 @@ function tenant(log, tenantId) {
         async validateCreation(data) {
 
             const ret = {};
+            log("ERROR: not checking if the document is in a cloneable state for cloned documents");
             if (!(data && data.status === "draft")) {
+
                 ret.failure = "Status must be 'draft'";
+
             }
             return ret;
 
