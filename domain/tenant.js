@@ -67,11 +67,13 @@ function tenant(log, tenantId) {
             };
             const user = await createRow(log, "Users", userId, "", defaultUser, true);
             if (!(user.tenants && user.tenants.includes(tenantId))) {
+
                 const tenants = user.tenants || [];
                 tenants.push(tenantId);
                 user.tenants = tenants;
                 user.updated = Date.now();
                 await upsertRow(log, "Users", userId, "", user);
+
             }
             return user;
 
@@ -216,7 +218,6 @@ function tenant(log, tenantId) {
                     if (options.createdBy) conditions.push(["createdBy eq guid?", options.createdBy]);
 
                 }
-                console.log(conditions);
                 const allRows = await listRows(log, "TenantDocuments", tenantId, conditions);
                 let validRows = allRows.filter(x => (!x.status) || (x.status !== "archived"));
                 if (options && options.include) {
@@ -296,7 +297,6 @@ function tenant(log, tenantId) {
 
         async fetchDocument(docId, options) {
 
-            console.log(tenantId, docId, options);
             return await readThrough([tenantId, docId, options], async () => {
 
                 const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
@@ -304,7 +304,8 @@ function tenant(log, tenantId) {
                     const { include } = options || {};
                     await decorateItemWithUserInformation(item)
                     const workflow = await workflowForItem(log, item);
-                    await workflow.decorateItemWithWorkflowValues(item);
+                    if (workflow)
+                        item.values = await workflow.fetchWorkflowValues(item);
                     if (include)
                         await decorateItemWithIncludedProperties(include, docId, item);
                 }
@@ -494,15 +495,21 @@ function tenant(log, tenantId) {
                     const workflow = await workflowForItem(log, item);
                     item[include] = workflow && await workflow.fetchDefinition();
 
-                } if (include === "transitions") {
+                } else if (include === "transitions") {
 
                     const workflow = await workflowForItem(log, item);
-                    item[include] = workflow && await workflow.fetchValidTransitions(item.status);
+                    if (workflow) {
 
-                } if (include === "values") {
+                        item.values = item.values || await workflow.fetchWorkflowValues(item);
+                        item[include] = await workflow.fetchValidTransitions(item);
+
+                    }
+
+                } else if (include === "values") {
 
                     const workflow = await workflowForItem(log, item);
-                    await workflow.decorateItemWithWorkflowValues(item);
+                    if (workflow)
+                        item[include] = await workflow.fetchWorkflowValues(item);
 
                 } else if (include.endsWith("*")) {
 

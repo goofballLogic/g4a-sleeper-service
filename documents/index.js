@@ -65,8 +65,7 @@ app.get("/api/documents/users/me", requireAnyUser, or500(async (req, res) => {
 
         const log = req.context.log.bind(req.context);
         if (include) include = include.split(",").filter(x => x);
-        const items = await theTenant(log, parentTenant)
-            .listDocuments({ createdBy: id, disposition, include });
+        const items = await theTenant(log, parentTenant).listDocuments({ createdBy: id, disposition, include });
         res.json({ items });
 
     }

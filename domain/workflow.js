@@ -22,6 +22,19 @@ function commonDefaults() {
 
 const asArray = x => Array.isArray(x) ? x : x ? [x] : [];
 
+function access(data, path) {
+
+    const bits = (path || "").split(".");
+    while (data && bits.length > 0) {
+
+        const bit = bits.shift();
+        data = data[bit];
+
+    }
+    return (data === undefined || data === null) ? null : { value: data };
+
+}
+
 function workflow(log, tenantId, workflowId) {
 
     return {
@@ -55,21 +68,24 @@ function workflow(log, tenantId, workflowId) {
 
         },
 
-        async fetchValidTransitions(currentStatus) {
+        async fetchValidTransitions(item) {
 
-            if (!currentStatus) {
+            const { status } = item;
+            if (!status) {
 
                 throw new Error("Not implemented");
 
             }
-            const state = await this.fetchDefinitionState(currentStatus);
+            const state = await this.fetchDefinitionState(status);
             if (!state) {
 
-                log(`ERROR: Unable to determine valid transitions for state ${currenStatus} in workflow ${workflowId} in tenant ${tenantId}`);
+                log(`ERROR: Unable to determine valid transitions for state ${status} in workflow ${workflowId} in tenant ${tenantId}`);
                 return [];
 
             }
-            return asArray(state.transitions);
+            let transitions = asArray(state.transitions);
+            transitions = await Promise.all(transitions.map(x => this.resolveConstraint(x, item)));
+            return transitions;
 
         },
 
@@ -102,7 +118,7 @@ function workflow(log, tenantId, workflowId) {
 
         },
 
-        async decorateItemWithWorkflowValues(item) {
+        async fetchWorkflowValues(item) {
 
             const definition = await this.fetchDefinition();
             if (!definition) return { failure: "Workflow missing" };
@@ -126,7 +142,7 @@ function workflow(log, tenantId, workflowId) {
 
             }
             const fetched = await Promise.all(fetching);
-            item.values = fetched.reduce((hash, values) => ({ ...hash, ...values }), {});
+            return fetched.reduce((hash, values) => ({ ...hash, ...values }), {});
 
         },
 
@@ -189,6 +205,58 @@ function workflow(log, tenantId, workflowId) {
 
             }
             return {};
+
+        },
+
+        async resolveConstraint(transition, item) {
+
+            function fail(key, message) {
+
+                if (!transition.failedConstraints) transition.failedConstraints = {};
+                transition.failedConstraints[key] = message;
+
+            }
+            if (!transition.constraint) return transition;
+            for (const [key, value] of Object.entries(transition.constraint)) {
+
+                switch (key) {
+
+                    case "nowIsBefore":
+                        const itemValue = access(item, value);
+                        if (!itemValue) {
+
+                            log(`WARN: no value found for ${value} in ${item.id} ${item.tenant}`);
+                            fail(key, "Not specified");
+
+                        } else {
+
+                            try {
+
+                                if (itemValue.value.length === 10) itemValue.value += "T00:00:00.000Z";
+                                const parsed = new Date(itemValue.value);
+                                if (parsed.valueOf() < Date.now()) {
+
+                                    fail(key, `Date has expired (${itemValue.value})`);
+
+                                }
+
+                            } catch (err) {
+
+                                log(`ERROR: failed to parse value ${itemValue.value} for ${value} in ${item.id} ${item.tenant}`);
+                                fail(key, "Non date value specified");
+
+                            }
+
+                        }
+                        break;
+
+                    default:
+                        throw new Error(`Unknown constraint ${transition.constraint}`);
+
+                }
+
+            }
+            return transition;
 
         },
 
