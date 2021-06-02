@@ -4,6 +4,9 @@ const { readThrough, invalidatePrefix } = require("../lib/crap-cache");
 const extractors = {
     "metadata": require("./extractors/metadata")
 };
+const constraintValidators = {
+    "nowIsBefore": require("./constraints/nowIsBefore")
+};
 
 /* circular ref */
 let theTenant = null;
@@ -21,19 +24,6 @@ function commonDefaults() {
 }
 
 const asArray = x => Array.isArray(x) ? x : x ? [x] : [];
-
-function access(data, path) {
-
-    const bits = (path || "").split(".");
-    while (data && bits.length > 0) {
-
-        const bit = bits.shift();
-        data = data[bit];
-
-    }
-    return (data === undefined || data === null) ? null : { value: data };
-
-}
 
 function workflow(log, tenantId, workflowId) {
 
@@ -220,38 +210,13 @@ function workflow(log, tenantId, workflowId) {
             if (!transition.constraint) return transition;
             for (const [key, value] of Object.entries(transition.constraint)) {
 
-                switch (key) {
+                if (key in constraintValidators) {
 
-                    case "nowIsBefore":
-                        const itemValue = access(item, value);
-                        if (!itemValue) {
+                    constraintValidators[key](log, value, item, message => fail(key, message));
 
-                            log(`WARN: no value found for ${value} in ${item.id} ${item.tenant}`);
+                } else {
 
-                        } else {
-
-                            try {
-
-                                if (itemValue.value.length === 10) itemValue.value += "T00:00:00.000Z";
-                                const parsed = new Date(itemValue.value);
-                                if (parsed.valueOf() < Date.now()) {
-
-                                    fail(key, `Date has expired (${itemValue.value})`);
-
-                                }
-
-                            } catch (err) {
-
-                                log(`ERROR: failed to parse value ${itemValue.value} for ${value} in ${item.id} ${item.tenant}`);
-                                fail(key, "Non date value specified");
-
-                            }
-
-                        }
-                        break;
-
-                    default:
-                        throw new Error(`Unknown constraint ${transition.constraint}`);
+                    throw new Error(`Unknown constraint ${transition.constraint}`);
 
                 }
 
