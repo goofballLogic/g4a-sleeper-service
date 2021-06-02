@@ -227,7 +227,6 @@ function workflow(log, tenantId, workflowId) {
                         if (!itemValue) {
 
                             log(`WARN: no value found for ${value} in ${item.id} ${item.tenant}`);
-                            fail(key, "Not specified");
 
                         } else {
 
