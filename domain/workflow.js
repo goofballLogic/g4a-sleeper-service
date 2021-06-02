@@ -83,9 +83,9 @@ function workflow(log, tenantId, workflowId) {
                 return [];
 
             }
-            let transitions = asArray(state.transitions);
-            transitions = await Promise.all(transitions.map(x => this.resolveConstraint(x, item)));
-            return transitions;
+            return await Promise.all(asArray(state.transitions).map(x =>
+                this.resolveConstraint(x, item)
+            ));
 
         },
 
@@ -210,12 +210,13 @@ function workflow(log, tenantId, workflowId) {
 
         async resolveConstraint(transition, item) {
 
-            function fail(key, message) {
+            transition = JSON.parse(JSON.stringify(transition));
+            const fail = (key, message) => {
 
                 if (!transition.failedConstraints) transition.failedConstraints = {};
                 transition.failedConstraints[key] = message;
 
-            }
+            };
             if (!transition.constraint) return transition;
             for (const [key, value] of Object.entries(transition.constraint)) {
 

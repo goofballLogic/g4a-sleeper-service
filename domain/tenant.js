@@ -187,7 +187,7 @@ function tenant(log, tenantId) {
                 const upserted = Object.keys(comparison.added).concat(Object.keys(comparison.updated));
                 if (upserted.some(x => x !== "status")) {
 
-                    log(`WARN: can't update non-writeable item ${item.id} with added/updated keys ${added.join(", ")}`);
+                    log(`WARN: can't update non-writeable item ${id} with added/updated keys ${upserted.join(", ")}`);
                     ret.failure = "This item is not updateable";
 
                 }
