@@ -8,7 +8,7 @@ module.exports = function nowIsBefore(log, path, item, fail) {
     const itemValue = access(item, path);
     if (!itemValue) {
 
-        log(`WARN: no value found for ${value} in ${item.id} ${item.tenant}`);
+        log(`WARN: no value found for ${path} in ${item.id} ${item.tenant}`);
 
     } else {
 
