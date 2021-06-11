@@ -58,11 +58,7 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
     const resp = await fetch(defaultsURL);
     if (!resp.ok) throw new Error(`An error occurred fetching default workflows from ${defaultsURL}: ${resp.status}`);
     const json = await resp.json();
-    const framed = await frame(json, defaultsShape);
-    const workflows = framed["@graph"] || [];
-    workflows.forEach(w => {
-        w.id = w["@id"].replace("https://tangentvision.com/g4a/workflows/", "");
-    });
+    const workflows = await shapeLDWorkflows(json);
 
     const tenant = theTenant(log, defaultTenantId);
     const user = theUser(log, userId);
@@ -89,3 +85,16 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
     return await user.fetch();
 
 }
+
+async function shapeLDWorkflows(jsonLDDocument) {
+
+    const framed = await frame(jsonLDDocument, defaultsShape);
+    const workflows = framed["@graph"] || [];
+    workflows.forEach(w => {
+        w.id = w["@id"].replace("https://tangentvision.com/g4a/workflows/", "");
+    });
+    return workflows;
+
+};
+
+module.exports.shapeLDWorkflows = shapeLDWorkflows;

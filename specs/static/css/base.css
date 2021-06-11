@@ -1,0 +1,123 @@
+body, html {
+    min-height: 100vh;
+    font-family: Arial;
+    font-size: 9pt;
+    line-height: 1.4;
+    background-color: #EEE;
+    font-weight: 100;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-wrap: wrap;
+    padding-top: 30px;
+}
+
+body.complete aside {
+    display: none;
+}
+
+nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 5px;
+    background-color: black;
+    color: white;
+}
+
+nav a {
+    color: white;
+}
+
+body aside {
+    position: absolute;
+    top: 40px;
+    bottom: 40px;
+    left: 40px;
+    right: 40px;
+    overflow: auto;
+    padding: 40px;
+    background-color: white;
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+article {
+    flex: 1;
+    background-color: white;
+    padding: 15px 0;
+    margin: 7px;
+    min-width: 300px;
+    box-shadow: 0 0 6px -2px black;
+    border-radius: 3px;
+}
+
+section, div {
+    padding: 0 15px;
+}
+
+.error {
+    background-color: #FEE;
+    color: red;
+}
+
+.pre {
+    white-space: pre-line;
+    margin-left: 15px;
+}
+
+.spaced {
+    margin-top: 10px;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.underline {
+    font-size: 1.5em;
+}
+
+.color-green {
+    color: #0C0;
+}
+
+.color-green::before {
+    content: '\2713';
+    display: inline-block;
+    width: 1.2em;
+}
+
+.color-red {
+    color: red;
+}
+
+.color-red::before {
+    content: '\2715';
+    display: inline-block;
+    width: 1.2em;
+}
+
+.color-blue {
+    color: blue;
+}
+
+.color-blue::before {
+    content: '?';
+    display: inline-block;
+    width: 1.2em;
+}
+
+.color-silver {
+    opacity: 0.5;
+}
+
+.color-silver::before {
+    content: '-';
+    display: inline-block;
+    width: 1.2em;
+}

@@ -5,6 +5,8 @@ const { getToken, tokenRequest } = require("../lib/azure-auth");
 const { readThrough } = require("../lib/crap-cache");
 const { fetchPublicStatusForTenant } = require("./status");
 
+const TEST_PREFIX = require("../specs/test-prefix");
+
 const ADcacheOptions = { expiry: 1000 * 60 * 10 };
 
 function user(log, userId) {
@@ -26,6 +28,9 @@ function user(log, userId) {
 
         async fetchADAttributes() {
 
+            if (userId.startsWith(TEST_PREFIX))
+                return { givenName: "test", surname: "user", email: "user@test.com" };
+
             const props = "givenName,surname,identities";
             const { givenName, surname, identities } = await readThrough(["user", userId, props], async () => {
 
@@ -33,9 +38,7 @@ function user(log, userId) {
                     const tokenResponse = await getToken(tokenRequest);
                     callback(null, tokenResponse.accessToken);
                 };
-                const options = {
-                    authProvider,
-                };
+                const options = { authProvider };
                 const client = Client.init(options);
                 const path = `/users/${userId}`;
                 return await client.api(path).select(props).get();

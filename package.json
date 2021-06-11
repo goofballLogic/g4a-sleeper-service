@@ -14,6 +14,7 @@
     "azure-functions-auth": "^1.4.2",
     "azure-storage": "^2.10.4",
     "express": "^4.17.1",
+    "gherkinickel": "^0.9.0",
     "isomorphic-fetch": "^3.0.0",
     "jsonld": "^5.2.0",
     "passport": "^0.4.1",
@@ -21,6 +22,7 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "deep-object-diff": "^1.1.0"
+    "deep-object-diff": "^1.1.0",
+    "handlebars": "^4.7.7"
   }
 }

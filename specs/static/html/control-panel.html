@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/api/specs/static/css/base.css">
+</head>
+
+<body>
+
+    <article>
+
+        <section>
+
+            <nav>
+
+                <a href="/api/specs">Specs home</a>
+
+            </nav>
+
+        </section>
+
+    </article>
+    <article>
+        <section>
+            <div>
+                To purge all test data:
+            </div>
+            <div>
+                <button id="purge">Purge test data</button>
+            </div>
+        </section>
+    </article>
+
+    <script type="module">
+
+        import { prefix } from "/api/specs/static/js/step_definitions/correlation.mjs";
+        document.querySelector("#purge").addEventListener("click", async () => {
+
+            const resp = await fetch(`/api/specs/sessions/${prefix()}`, { method: "DELETE" });
+            alert(`${resp.status} ${resp.statusText}`);
+
+        });
+
+    </script>
+
+</body>
+
+</html>
