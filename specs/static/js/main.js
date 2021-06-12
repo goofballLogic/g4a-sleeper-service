@@ -90,6 +90,12 @@ const pad = (x, length) => {
 
 }
 
+
+const url = new URL(location.href);
+const specificFeature = url.searchParams.get("feature");
+const specificScenario = url.searchParams.get("scenario");
+const suppressCleanup = url.searchParams.get("suppress-cleanup");
+
 (async function () {
 
     const resp = await fetch("/api/specs/features");
@@ -124,12 +130,13 @@ const pad = (x, length) => {
             htmlRender(output);
             document.body.classList.add("complete");
 
-            fetch(`/api/specs/sessions/${sessionPrefix}`, {
-                method: "DELETE"
-            }).then(
-                console.log.bind(console),
-                console.error.bind(console)
-            );
+            if (!suppressCleanup)
+                fetch(`/api/specs/sessions/${sessionPrefix}`, {
+                    method: "DELETE"
+                }).then(
+                    console.log.bind(console),
+                    console.error.bind(console)
+                );
 
         } finally {
 
@@ -141,9 +148,6 @@ const pad = (x, length) => {
 
 })();
 
-const url = new URL(location.href);
-const specificFeature = url.searchParams.get("feature");
-const specificScenario = url.searchParams.get("scenario");
 let progress = () => { };
 
 function randomInt(entropy) {

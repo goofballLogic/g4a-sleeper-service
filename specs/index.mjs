@@ -6,7 +6,7 @@ import { html, json, badRequest, methodNotAllowed, notFound, created } from "./r
 import { tenant } from "../domain/tenant.js";
 import features from "./features.mjs";
 import defaultWorkflows from "./default-workflows.mjs";
-import { deleteRowsWithPartitionPrefix } from "../lib/rows.js";
+import { deleteRowsWithPartitionPrefix, fetchRow } from "../lib/rows.js";
 import { deleteBlobContainersWithPrefix } from "../lib/blobs.js";
 import TEST_PREFIX from "./test-prefix.js";
 
@@ -50,8 +50,12 @@ async function users(route, context, req) {
     if (!isWhiteListed(tenantName))
         return badRequest(`Tenant's name must begin with ${TEST_PREFIX} but got ${tenantName}`);
 
-    const testTenant = await tenantWithWorkflows(context, tenantName);
-    await testTenant.ensureUserExists(name, { defaultTenantId: tenantName });
+    const testTenant = tenant(context.log, tenantName);
+    await Promise.all([
+        testTenant.ensureExists({ name: tenantName }),
+        testTenant.ensureDefaultWorkflows(defaultWorkflows),
+        testTenant.ensureUserExists(name, { defaultTenantId: tenantName })
+    ]);
 
     return created();
 
@@ -76,8 +80,12 @@ async function documents(route, context, req) {
     if (!isWhiteListed(tenantName))
         return badRequest(`Tenant's name must begin with ${TEST_PREFIX} but got ${tenantName}`);
 
-    const testTenant = await tenantWithWorkflows(context, tenantName);
-    const item = await testTenant.createDocumentForUser({ id: userName }, { disposition });
+    const testTenant = tenant(context.log, tenantName);
+    const [, , item] = await Promise.all([
+        testTenant.ensureExists({ name: tenantName }),
+        testTenant.ensureDefaultWorkflows(defaultWorkflows),
+        testTenant.createDocumentForUser({ id: userName }, { disposition })
+    ]);
 
     return created(item);
 
@@ -101,14 +109,38 @@ async function sessions(route, context, req) {
 
 }
 
-async function tenantWithWorkflows(context, tenantName) {
+const rpcFunctions = {
 
-    const testTenant = tenant(context.log, tenantName);
-    await Promise.all([
-        testTenant.ensureExists({ name: tenantName }),
-        testTenant.ensureDefaultWorkflows(defaultWorkflows)
-    ]);
-    return testTenant;
+    async MakePublic(log, args) {
+        console.log(1);
+        if (!args) return { error: "Arguments missing" };
+        const { document: documentId, tenant: tenantId } = args;
+        if (!isWhiteListed(tenantId)) return { error: `Invalid tenant id: ${tenantId}` };
+        try {
+
+            return await tenant(log, tenantId).dangerouslyOverrideDocumentValues(documentId, { "public": true });
+
+        } catch (err) {
+
+            return { error: err.message };
+
+        }
+
+    }
+
+};
+
+async function rpc(route, context, req) {
+
+    if (route.length > 1)
+        return notFound();
+    if (req.method !== "POST")
+        return methodNotAllowed(`Expected POST but got ${req.method}`);
+    const functionName = req.body?.functionName;
+    if (!(functionName in rpcFunctions))
+        return badRequest(`Unrecognised function ${functionName}`);
+    const result = await rpcFunctions[functionName](context.log, req.body?.args);
+    return json(result);
 
 }
 
@@ -128,6 +160,8 @@ async function serveDynamic(route, context, req) {
             return documents(route, context, req);
         case "sessions":
             return sessions(route, context, req);
+        case "rpc":
+            return rpc(route, context, req);
         default:
             return skeleton({ "main": "Not found" }, 404);
     }

@@ -6,6 +6,11 @@ When("{word} tries to access the document {string}", async function (userName, d
 
 });
 
+When("{word} tries to access the public document {string}", async function (userName, documentName) {
+
+    await accessDocumentForUser.call(this, userName, documentName, null, true);
+
+});
 
 When("{word} tries to access the document they created {string}", async function (userName, documentName) {
 
@@ -13,7 +18,7 @@ When("{word} tries to access the document they created {string}", async function
 
 });
 
-async function accessDocumentForUser(userName, documentName, tid) {
+async function accessDocumentForUser(userName, documentName, tid, isPublic) {
 
     const user = this.users && this.users[userName];
     if (!user)
@@ -23,7 +28,8 @@ async function accessDocumentForUser(userName, documentName, tid) {
         throw new Error("Unknown document");
     const docId = document.body.id;
     tid = tid || document.body.tenant;
-    this.lastDocumentFetch = await fetch(`/api/documents/${tid}/${docId}`, {
+    const url = `/api/documents/${isPublic ? "public/" : ""}${tid}/${docId}`;
+    this.lastDocumentFetch = await fetch(url, {
         method: "GET",
         headers: { "X-test-user": user.name }
     });

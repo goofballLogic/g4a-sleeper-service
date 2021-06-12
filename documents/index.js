@@ -77,6 +77,12 @@ app.get("/api/documents/workflows/:tid/:id", requireUserTenancy, or500(async (re
 
 }));
 
+app.get("/api/documents/created/:id", requireAnyUser, or500(async (req, res) => {
+
+    throw new Error("Not implemented");
+
+}));
+
 app.get("/api/documents/:tid/:id", requireUserTenancy, or500(async (req, res) => {
 
     const { tid, id } = req.params;

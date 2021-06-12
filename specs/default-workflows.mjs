@@ -7,4 +7,5 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const json = readFileSync(resolve(__dirname, "default-workflows.jsonld"));
 const parsed = JSON.parse(json);
-export default await shapeLDWorkflows(parsed);
+const shaped = await shapeLDWorkflows(parsed);
+export default shaped;

@@ -20,5 +20,5 @@ Feature: Document access
 
     Scenario: A public document can be viewed by other people
         Given TenantA has a public "grant" document named "Document C" created by UserA
-        When UserC tries to access the document "Document C"
+        When UserC tries to access the public document "Document C"
         Then the request to access the document succeeds

@@ -89,7 +89,7 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
 async function shapeLDWorkflows(jsonLDDocument) {
 
     const framed = await frame(jsonLDDocument, defaultsShape);
-    const workflows = framed["@graph"] || [];
+    const workflows = (framed["@type"] == "Workflow" ? [framed] : framed["@graph"]) || [];
     workflows.forEach(w => {
         w.id = w["@id"].replace("https://tangentvision.com/g4a/workflows/", "");
     });

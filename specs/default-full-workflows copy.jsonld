@@ -1,0 +1,183 @@
+{
+    "@context": {
+        "g4a": "https://tangentvision.com/g4a/",
+        "@vocab": "https://tangentvision.com/g4a/vocab#"
+    },
+    "@graph": [
+        {
+            "@type": "Workflow",
+            "@id": "g4a:workflows/default-grant",
+            "disposition": "grant",
+            "name": "Default grant workflow",
+            "workflow": [
+                {
+                    "default": true,
+                    "id": "draft",
+                    "status": "Draft",
+                    "readwrite": true,
+                    "transitions": [
+                        {
+                            "id": "live",
+                            "action": "Open",
+                            "description": "Make the grant open for applications"
+                        },
+                        {
+                            "id": "archived",
+                            "action": "Archive",
+                            "description": "Discard this grant"
+                        }
+                    ]
+                },
+                {
+                    "id": "live",
+                    "status": "Live",
+                    "public": true,
+                    "transitions": [
+                        {
+                            "id": "closed",
+                            "action": "Close",
+                            "description": "Close the grant to new applications"
+                        }
+                    ],
+                    "cloneable": {
+                        "target-workflow": "default-application"
+                    }
+                },
+                {
+                    "id": "closed",
+                    "status": "Closed",
+                    "transitions": [
+                        {
+                            "id": "draft",
+                            "action": "Back to Draft",
+                            "description": "Put this grant back in draft mode where it can be edited"
+                        },
+                        {
+                            "id": "live",
+                            "action": "Re-open",
+                            "description": "Re-open this grant to new applications"
+                        },
+                        {
+                            "id": "archived",
+                            "action": "Archive",
+                            "description": "WARNING: This will remove the grant from your list of administered grants"
+                        }
+                    ]
+                },
+                {
+                    "id": "archived",
+                    "status": "Archived"
+                }
+            ]
+        },
+        {
+            "@type": "Workflow",
+            "@id": "g4a:workflows/default-application",
+            "disposition": "application",
+            "name": "Default application workflow",
+            "values": {
+                "metadata": {
+                    "parent.submissionDeadline": "submissionDeadline"
+                }
+            },
+            "workflow": [
+                {
+                    "default": true,
+                    "id": "draft",
+                    "status": "Draft",
+                    "readwrite": true,
+                    "transitions": [
+                        {
+                            "id": "submitted",
+                            "action": "Submit",
+                            "description": "Submit this application (you won't be able to modify once it is submitted)",
+                            "clone": {
+                                "target-owner": "parent",
+                                "target-workflow": "default-decision"
+                            },
+                            "constraint": {
+                                "nowIsBefore": "values.submissionDeadline"
+                            }
+                        },
+                        {
+                            "id": "cancelled",
+                            "action": "Cancel",
+                            "description": "Cancel this application"
+                        }
+                    ]
+                },
+                {
+                    "id": "submitted",
+                    "status": "Submitted"
+                },
+                {
+                    "id": "cancelled",
+                    "status": "Cancelled"
+                }
+            ]
+        },
+        {
+            "@type": "Workflow",
+            "@id": "g4a:workflows/default-decision",
+            "disposition": "submitted-application",
+            "name": "Default decision workflow",
+            "workflow": [
+                {
+                    "default": true,
+                    "readwrite": true,
+                    "id": "submitted",
+                    "status": "Submitted",
+                    "transitions": [
+                        {
+                            "id": "approved",
+                            "action": "Approve",
+                            "description": "Approve this application and offer funding"
+                        },
+                        {
+                            "id": "rejected",
+                            "action": "Decline",
+                            "description": "Decline this application"
+                        },
+                        {
+                            "id": "cancelled",
+                            "action": "Cancel",
+                            "description": "Cancel this application and remove it from consideration"
+                        }
+                    ]
+                },
+                {
+                    "id": "cancelled",
+                    "status": "Cancelled"
+                },
+                {
+                    "id": "rejected",
+                    "status": "Application declined"
+                },
+                {
+                    "id": "approved",
+                    "status": "Approved",
+                    "transitions": [
+                        {
+                            "id": "declined",
+                            "action": "Decline",
+                            "description": "Decline the offered grant"
+                        },
+                        {
+                            "id": "accepted",
+                            "action": "Accept",
+                            "description": "Accept the offered grant"
+                        }
+                    ]
+                },
+                {
+                    "id": "declined",
+                    "status": "Offer declined"
+                },
+                {
+                    "id": "accepted",
+                    "status": "Accepted"
+                }
+            ]
+        }
+    ]
+}
