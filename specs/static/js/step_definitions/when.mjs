@@ -12,7 +12,7 @@ When("{word} tries to access the public document {string}", async function (user
 
 });
 
-When("{word} tries to access the document they created {string}", async function (userName, documentName) {
+When("{word} tries to access the document {string} as the author", async function (userName, documentName) {
 
     await fetchDocumentForUser(this, documentName, userName, `/api/documents/author/{tid}/{docId}`);
 

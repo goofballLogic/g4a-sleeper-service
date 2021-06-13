@@ -134,7 +134,7 @@ const suppressCleanup = url.searchParams.get("suppress-cleanup");
                 fetch(`/api/specs/sessions/${sessionPrefix}`, {
                     method: "DELETE"
                 }).then(
-                    console.log.bind(console),
+                    res => { if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); },
                     console.error.bind(console)
                 );
 
