@@ -2,36 +2,33 @@ import { When } from "../registry.mjs";
 
 When("{word} tries to access the document {string}", async function (userName, documentName) {
 
-    await accessDocumentForUser.call(this, userName, documentName);
+    await fetchDocumentForUser(this, documentName, userName, `/api/documents/{tid}/{docId}`);
 
 });
 
 When("{word} tries to access the public document {string}", async function (userName, documentName) {
 
-    await accessDocumentForUser.call(this, userName, documentName, null, true);
+    await fetchDocumentForUser(this, documentName, userName, `/api/documents/public/{tid}/{docId}`);
 
 });
 
 When("{word} tries to access the document they created {string}", async function (userName, documentName) {
 
-    await accessDocumentForUser.call(this, userName, documentName, "created");
+    await fetchDocumentForUser(this, documentName, userName, `/api/documents/author/{tid}/{docId}`);
 
 });
 
-async function accessDocumentForUser(userName, documentName, tid, isPublic) {
+async function fetchDocumentForUser(context, documentName, userName, urlTemplate) {
 
-    const user = this.users && this.users[userName];
-    if (!user)
-        throw new Error("Unknown user");
-    const document = this.documents && this.documents[documentName];
+    const document = context.documents && context.documents[documentName];
     if (!document)
         throw new Error("Unknown document");
+    const user = context.users && context.users[userName];
+    if (!user)
+        throw new Error("Unknown user");
     const docId = document.body.id;
-    tid = tid || document.body.tenant;
-    const url = `/api/documents/${isPublic ? "public/" : ""}${tid}/${docId}`;
-    this.lastDocumentFetch = await fetch(url, {
-        method: "GET",
-        headers: { "X-test-user": user.name }
-    });
+    const tid = document.tenant;
+    const url = urlTemplate.replace(/\{tid\}/g, tid).replace(/\{docId\}/g, docId);
+    context.lastDocumentFetch = await fetch(url, { headers: { "X-test-user": user.name } });
 
 }

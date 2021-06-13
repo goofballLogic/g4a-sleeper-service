@@ -77,9 +77,17 @@ app.get("/api/documents/workflows/:tid/:id", requireUserTenancy, or500(async (re
 
 }));
 
-app.get("/api/documents/created/:id", requireAnyUser, or500(async (req, res) => {
+app.get("/api/documents/author/:tid/:id", requireAnyUser, or500(async (req, res) => {
 
-    throw new Error("Not implemented");
+    const { tid, id } = req.params;
+    const { context } = req;
+    const include = req.query?.include?.split(",").filter(x => x);
+    const log = context.log.bind(context);
+    const item = await theTenant(log, tid).fetchDocument(id, { include });
+    if (item && item.createdBy === req.user.id)
+        res.status(200).json({ item });
+    else
+        res.status(404).json({ error: "Not found" });
 
 }));
 

@@ -81,6 +81,12 @@ function user(log, userId) {
             }
             return doc;
 
+        },
+
+        async createdDocument(id, options) {
+
+            throw new Error("Not implemented");
+
         }
 
     }

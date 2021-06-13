@@ -318,12 +318,10 @@ function tenant(log, tenantId) {
         async dangerouslyOverrideDocumentValues(docId, values) {
 
             const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
-            console.log(tenantId, docId);
-
             if (!item) throw new Error("Document not found");
-            console.log(item);
+
             Object.assign(item, values);
-            console.log(item);
+
             await invalidatePrefix([tenantId, docId]);
             await invalidatePrefix([tenantId, "listDocuments"]);
             await public(log).invalidateForTenant(tenantId);
