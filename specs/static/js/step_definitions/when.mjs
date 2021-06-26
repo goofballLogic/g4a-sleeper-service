@@ -1,4 +1,5 @@
 import { When } from "../registry.mjs";
+import { prefix } from "./correlation.mjs";
 
 When("{word} tries to access the document {string}", async function (userName, documentName) {
 
@@ -18,17 +19,47 @@ When("{word} tries to access the document {string} as the author", async functio
 
 });
 
+When("{word} lists documents in {word}", async function (userName, tenantName) {
+
+    const headers = requireUserHeader(this, userName);
+    const tenant = prefix(tenantName, this.scid);
+    const resp = await fetch(`/api/documents/${tenant}`, { headers });
+    this.lastListFetch = resp;
+    this.lastListFetchBody = resp.ok ? await resp.json() : null;
+
+});
+
+When("I call to initialize as user {word}", async function (userName) {
+
+    const headers = { "Authorization": `Bearer TESTUSER: ${userName}` };
+    this.lastInitializeFetch = await fetch(`/api/initialize`, { method: "POST", headers });
+
+});
+
 async function fetchDocumentForUser(context, documentName, userName, urlTemplate) {
 
     const document = context.documents && context.documents[documentName];
     if (!document)
         throw new Error("Unknown document");
-    const user = context.users && context.users[userName];
-    if (!user)
-        throw new Error("Unknown user");
     const docId = document.body.id;
     const tid = document.tenant;
     const url = urlTemplate.replace(/\{tid\}/g, tid).replace(/\{docId\}/g, docId);
-    context.lastDocumentFetch = await fetch(url, { headers: { "X-test-user": user.name } });
+    context.lastDocumentFetch = await fetch(url, { headers: requireUserHeader(context, userName) });
+
+}
+
+function requireUserHeader(context, userName) {
+
+    const user = requireUser(context, userName);
+    return { "X-test-user": user.name };
+
+}
+
+function requireUser(context, userName) {
+
+    const user = context.users && context.users[userName];
+    if (!user)
+        throw new Error("Unknown user");
+    return user;
 
 }

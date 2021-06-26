@@ -79,133 +79,133 @@ function tenant(log, tenantId) {
 
         },
 
-        async ensureUserDoesNotExist(userId) {
+        // async ensureUserDoesNotExist(userId) {
 
-            log(`Ensure user ${userId} does not exist`);
-            await deleteRow(log, "Users", userId, "");
+        //     log(`Ensure user ${userId} does not exist`);
+        //     await deleteRow(log, "Users", userId, "");
 
-        },
+        // },
 
-        async fetchOrCreateGroup(groupName, permissions) {
+        // async fetchOrCreateGroup(groupName, permissions) {
 
-            log(`Ensure group ${groupName} exists for tenant ${tenantId}`);
-            const groups = await listRows(log, "TenantGroups", tenantId);
-            let group = groups.find(g => g.name === groupName);
-            if (!group) {
+        //     log(`Ensure group ${groupName} exists for tenant ${tenantId}`);
+        //     const groups = await listRows(log, "TenantGroups", tenantId);
+        //     let group = groups.find(g => g.name === groupName);
+        //     if (!group) {
 
-                const name = groupName;
-                const id = newid();
-                const data = { ...commonDefaults(), name, id, tenantId, permissions };
-                group = await createRow(log, "TenantGroups", tenantId, id, data, true);
+        //         const name = groupName;
+        //         const id = newid();
+        //         const data = { ...commonDefaults(), name, id, tenantId, permissions };
+        //         group = await createRow(log, "TenantGroups", tenantId, id, data, true);
 
-            }
-            return {
+        //     }
+        //     return {
 
-                async ensureGroupMembership(user) {
+        //         async ensureGroupMembership(user) {
 
-                    log(`Ensure group ${groupName} for tenant ${tenantId} has member ${user?.id}`)
-                    const data = { ...commonDefaults(), groupId: group.id, userId: user.id };
-                    await createRow(log, "TenantGroupUsers", tenantId, `${data.userId}_${data.groupId}`, data, true);
+        //             log(`Ensure group ${groupName} for tenant ${tenantId} has member ${user?.id}`)
+        //             const data = { ...commonDefaults(), groupId: group.id, userId: user.id };
+        //             await createRow(log, "TenantGroupUsers", tenantId, `${data.userId}_${data.groupId}`, data, true);
 
-                }
+        //         }
 
-            };
+        //     };
 
-        },
+        // },
 
-        async validateCreation(data) {
+        // async validateCreation(data) {
 
-            const ret = {};
-            log("ERROR: not checking if the document is in a cloneable state for cloned documents");
-            if (!(data && data.status === "draft")) {
+        //     const ret = {};
+        //     log("ERROR: not checking if the document is in a cloneable state for cloned documents");
+        //     if (!(data && data.status === "draft")) {
 
-                ret.failure = "Status must be 'draft'";
+        //         ret.failure = "Status must be 'draft'";
 
-            }
-            return ret;
+        //     }
+        //     return ret;
 
-        },
+        // },
 
-        async validateDocumentContentUpdate(id, data) {
+        // async validateDocumentContentUpdate(id, data) {
 
-            return await this.validateDocumentPartUpdate(id, "content", data);
+        //     return await this.validateDocumentPartUpdate(id, "content", data);
 
-        },
+        // },
 
-        async validateDocumentPartUpdate(id, part, data) {
+        // async validateDocumentPartUpdate(id, part, data) {
 
-            const ret = {};
-            const existing = await this.fetchDocument(id);
-            if (!existing) {
+        //     const ret = {};
+        //     const existing = await this.fetchDocument(id);
+        //     if (!existing) {
 
-                ret.failure = "Missing document";
+        //         ret.failure = "Missing document";
 
-            } else {
+        //     } else {
 
-                if (!existing.readwrite) {
+        //         if (!existing.readwrite) {
 
-                    ret.failure = "This item is not updateable";
+        //             ret.failure = "This item is not updateable";
 
-                } else if (!part) {
+        //         } else if (!part) {
 
-                    ret.failure = "Invalid part name";
+        //             ret.failure = "Invalid part name";
 
-                }
-                // const allowedForDisposition = validateDispositionStatusParts[existing.disposition];
-                // if (!allowedForDisposition) {
+        //         }
+        //         // const allowedForDisposition = validateDispositionStatusParts[existing.disposition];
+        //         // if (!allowedForDisposition) {
 
-                //     ret.failure = `Cannot add parts to a ${existing.disposition} document`;
+        //         //     ret.failure = `Cannot add parts to a ${existing.disposition} document`;
 
-                // } else {
+        //         // } else {
 
-                //     const allowedPartStatii = allowedForDisposition[existing.status];
-                //     if (!allowedPartStatii) {
+        //         //     const allowedPartStatii = allowedForDisposition[existing.status];
+        //         //     if (!allowedPartStatii) {
 
-                //         ret.failure = `Cannot modify ${existing.disposition} when in ${existing.status} status`;
+        //         //         ret.failure = `Cannot modify ${existing.disposition} when in ${existing.status} status`;
 
-                //     } else if (!allowedPartStatii.includes(part)) {
+        //         //     } else if (!allowedPartStatii.includes(part)) {
 
-                //         ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
+        //         //         ret.failure = `When in ${existing.status} state, allowed parts are: ${allowedPartStatii.join(", ")}`;
 
-                //     }
+        //         //     }
 
-                // }
+        //         // }
 
-            }
-            return ret;
+        //     }
+        //     return ret;
 
-        },
+        // },
 
-        async validateUpdate(id, data) {
+        // async validateUpdate(id, data) {
 
-            const ret = {};
+        //     const ret = {};
 
-            const existing = await this.fetchDocument(id);
-            if (existing && !existing.readwrite) {
+        //     const existing = await this.fetchDocument(id);
+        //     if (existing && !existing.readwrite) {
 
-                const comparison = detailedDiff(existing, data);
-                const upserted = Object.keys(comparison.added).concat(Object.keys(comparison.updated));
-                if (upserted.some(x => x !== "status")) {
+        //         const comparison = detailedDiff(existing, data);
+        //         const upserted = Object.keys(comparison.added).concat(Object.keys(comparison.updated));
+        //         if (upserted.some(x => x !== "status")) {
 
-                    log(`WARN: can't update non-writeable item ${id} with added/updated keys ${upserted.join(", ")}`);
-                    ret.failure = "This item is not updateable";
+        //             log(`WARN: can't update non-writeable item ${id} with added/updated keys ${upserted.join(", ")}`);
+        //             ret.failure = "This item is not updateable";
 
-                }
+        //         }
 
-            } else if (existing) {
+        //     } else if (existing) {
 
-                if (data && data.status && existing.status !== data.status) {
+        //         if (data && data.status && existing.status !== data.status) {
 
-                    const workflow = await workflowForItem(log, existing);
-                    const validation = await workflow.validateTransition(existing.status, data.status);
-                    if (!validation.isValid) ret.failure = validation.failure;
+        //             const workflow = await workflowForItem(log, existing);
+        //             const validation = await workflow.validateTransition(existing.status, data.status);
+        //             if (!validation.isValid) ret.failure = validation.failure;
 
-                }
+        //         }
 
-            }
-            return ret;
+        //     }
+        //     return ret;
 
-        },
+        // },
 
         async listDocuments(options) {
 
@@ -235,65 +235,65 @@ function tenant(log, tenantId) {
 
         },
 
-        async listWorkflows(options) {
+        // async listWorkflows(options) {
 
-            return await readThrough([tenantId, "workflows", JSON.stringify(options || {})], async () => {
+        //     return await readThrough([tenantId, "workflows", JSON.stringify(options || {})], async () => {
 
-                const conditions = options && options.disposition
-                    ? [["disposition eq ?", options.disposition]]
-                    : null;
-                const allRows = await listRows(log, "TenantWorkflows", tenantId, conditions);
-                return allRows.filter(x => (!x.status) || (x.status !== "archived"));
+        //         const conditions = options && options.disposition
+        //             ? [["disposition eq ?", options.disposition]]
+        //             : null;
+        //         const allRows = await listRows(log, "TenantWorkflows", tenantId, conditions);
+        //         return allRows.filter(x => (!x.status) || (x.status !== "archived"));
 
-            });
+        //     });
 
-        },
+        // },
 
-        async fetchGrandChildDocuments(docId, options) {
+        // async fetchGrandChildDocuments(docId, options) {
 
-            return await readThrough([tenantId, docId, options, "grandchildren"], async () => {
+        //     return await readThrough([tenantId, docId, options, "grandchildren"], async () => {
 
-                const conditions = [
-                    ["grandParentId eq ?", docId],
-                    ["grandParentIdTenant eq guid?", tenantId]
-                ];
-                if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
-                const items = await listRows(log, "TenantDocuments", null, conditions);
-                const { include } = options;
-                let promised = items.map(item => decorateItemWithUserInformation(item));
-                if (include)
-                    promised = promised.concat(
-                        items.map(item => decorateItemWithIncludedProperties(include, item.id, item))
-                    );
-                await Promise.all(promised);
-                return items;
+        //         const conditions = [
+        //             ["grandParentId eq ?", docId],
+        //             ["grandParentIdTenant eq guid?", tenantId]
+        //         ];
+        //         if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
+        //         const items = await listRows(log, "TenantDocuments", null, conditions);
+        //         const { include } = options;
+        //         let promised = items.map(item => decorateItemWithUserInformation(item));
+        //         if (include)
+        //             promised = promised.concat(
+        //                 items.map(item => decorateItemWithIncludedProperties(include, item.id, item))
+        //             );
+        //         await Promise.all(promised);
+        //         return items;
 
-            });
+        //     });
 
-        },
+        // },
 
-        async fetchChildDocuments(docId, options) {
+        // async fetchChildDocuments(docId, options) {
 
-            return await readThrough([tenantId, docId, options, "children"], async () => {
+        //     return await readThrough([tenantId, docId, options, "children"], async () => {
 
-                const conditions = [
-                    ["parentId eq ?", docId],
-                    ["parentIdTenant eq guid?", tenantId]
-                ];
-                if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
-                const items = await listRows(log, "TenantDocuments", null, conditions);
-                const { include } = options;
-                let promised = items.map(item => decorateItemWithUserInformation(item));
-                if (include)
-                    promised = promised.concat(
-                        items.map(item => decorateItemWithIncludedProperties(include, item.id, item))
-                    );
-                await Promise.all(promised);
-                return items;
+        //         const conditions = [
+        //             ["parentId eq ?", docId],
+        //             ["parentIdTenant eq guid?", tenantId]
+        //         ];
+        //         if ("readwrite" in options) conditions.push(["readwrite eq ?", options.readwrite]);
+        //         const items = await listRows(log, "TenantDocuments", null, conditions);
+        //         const { include } = options;
+        //         let promised = items.map(item => decorateItemWithUserInformation(item));
+        //         if (include)
+        //             promised = promised.concat(
+        //                 items.map(item => decorateItemWithIncludedProperties(include, item.id, item))
+        //             );
+        //         await Promise.all(promised);
+        //         return items;
 
-            });
+        //     });
 
-        },
+        // },
 
         async fetchDocument(docId, options) {
 
@@ -329,156 +329,156 @@ function tenant(log, tenantId) {
 
         },
 
-        async patchDocument(docId, values) {
+        // async patchDocument(docId, values) {
 
-            const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
-            if (!item) return null;
-            const original = JSON.parse(JSON.stringify(item));
-            Object.assign(item, values);
-            await invalidatePrefix([tenantId, docId]);
-            await invalidatePrefix([tenantId, "listDocuments"]);
-            return await readThrough([tenantId, docId], async () => {
+        //     const item = await fetchRow(log, "TenantDocuments", tenantId, docId);
+        //     if (!item) return null;
+        //     const original = JSON.parse(JSON.stringify(item));
+        //     Object.assign(item, values);
+        //     await invalidatePrefix([tenantId, docId]);
+        //     await invalidatePrefix([tenantId, "listDocuments"]);
+        //     return await readThrough([tenantId, docId], async () => {
 
-                const undoMutation = await mutateWorkflowStateForItem(log, tenantId, original, item);
-                await public(log).invalidateForTenant(tenantId);
-                try {
+        //         const undoMutation = await mutateWorkflowStateForItem(log, tenantId, original, item);
+        //         await public(log).invalidateForTenant(tenantId);
+        //         try {
 
-                    return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
+        //             return await upsertRow(log, "TenantDocuments", tenantId, docId, item);
 
-                } catch (err) {
+        //         } catch (err) {
 
-                    await undoMutation();
-                    throw err;
+        //             await undoMutation();
+        //             throw err;
 
-                }
+        //         }
 
-            });
+        //     });
 
-        },
+        // },
 
-        async putDocumentContent(docId, content) {
+        // async putDocumentContent(docId, content) {
 
-            await this.putDocumentPart(docId, "content", content);
+        //     await this.putDocumentPart(docId, "content", content);
 
-        },
+        // },
 
-        async putDocumentPart(docId, partName, content) {
+        // async putDocumentPart(docId, partName, content) {
 
-            content = (typeof content === "string") ? content : JSON.stringify(content);
-            await putJSONBlob(log, `${docId}-${partName}`, tenantId, Buffer.from(content));
-            await this.patchDocument(docId, { updated: new Date().toISOString() });
-            await invalidatePrefix([tenantId, docId]);
+        //     content = (typeof content === "string") ? content : JSON.stringify(content);
+        //     await putJSONBlob(log, `${docId}-${partName}`, tenantId, Buffer.from(content));
+        //     await this.patchDocument(docId, { updated: new Date().toISOString() });
+        //     await invalidatePrefix([tenantId, docId]);
 
-        },
+        // },
 
-        async fetchDocumentPart(docId, partName) {
+        // async fetchDocumentPart(docId, partName) {
 
-            try {
+        //     try {
 
-                return await fetchJSONBlob(log, `${docId}-${partName}`, tenantId);
+        //         return await fetchJSONBlob(log, `${docId}-${partName}`, tenantId);
 
-            } catch (err) {
+        //     } catch (err) {
 
-                if (err && err.statusCode == 404) return null;
-                throw err;
+        //         if (err && err.statusCode == 404) return null;
+        //         throw err;
 
-            }
+        //     }
 
-        },
+        // },
 
         async createDocumentForUser(user, values) {
 
-            if ("clone-id" in values) {
+            // if ("clone-id" in values) {
 
-                return await this.cloneDocumentForUser(user, values);
+            //     return await this.cloneDocumentForUser(user, values);
 
-            } else {
-
-                const { id: createdBy } = user;
-                const id = newid();
-
-                const data = {
-                    ...whiteListValues(log, values),
-                    ...commonDefaults(),
-                    createdBy,
-                    id,
-                    tenant: tenantId
-                };
-
-                await mutateWorkflowStateForItem(log, tenantId, null, data);
-
-                const created = await createRow(log, "TenantDocuments", tenantId, id, data);
-
-                await invalidatePrefix([tenantId, id]);
-                await public(log).invalidateForTenant(tenantId);
-
-                return created;
-
-            }
-
-        },
-
-        async cloneDocumentForTenant(values) {
-
-            const parentId = values["clone-id"];
-            const parentIdTenant = values["clone-tenant"];
-            const fetched = await fetchRow(log, "TenantDocuments", parentIdTenant, parentId);
-
-            const id = newid();
-
-            const data = {
-                ...fetched,
-                ...whiteListValues(log, values),
-                ...commonDefaults(),
-                id,
-                tenant: tenantId,
-                parentId,
-                parentIdTenant,
-                grandParentId: fetched.parentId,
-                grandParentIdTenant: fetched.parentIdTenant
-            };
-
-            await mutateWorkflowStateForItem(log, tenantId, null, data);
-            return await cloneDocument(id, tenantId, data, parentId, parentIdTenant);
-
-        },
-
-        async cloneDocumentForUser(user, values) {
-
-            const parentId = values["clone-id"];
-            const parentIdTenant = values["clone-tenant"];
-            const fetched = await fetchRow(log, "TenantDocuments", parentIdTenant, parentId);
+            // } else {
 
             const { id: createdBy } = user;
             const id = newid();
 
             const data = {
-                ...fetched,
                 ...whiteListValues(log, values),
                 ...commonDefaults(),
                 createdBy,
                 id,
-                tenant: parentIdTenant,
-                parentId,
-                parentIdTenant,
-                grandParentId: fetched.parentId,
-                grandParentIdTenant: fetched.parentIdTenant,
+                tenant: tenantId
             };
 
-            await mutateWorkflowStateForItem(log, parentIdTenant, null, data);
-            return await cloneDocument(id, parentIdTenant, data, parentId, parentIdTenant);
+            await mutateWorkflowStateForItem(log, tenantId, null, data);
+
+            const created = await createRow(log, "TenantDocuments", tenantId, id, data);
+
+            await invalidatePrefix([tenantId, id]);
+            await public(log).invalidateForTenant(tenantId);
+
+            return created;
+
+            //}
 
         },
 
-        async deleteDocument(id) {
+        // async cloneDocumentForTenant(values) {
 
-            await deleteRow(log, "TenantDocuments", tenantId, id);
-            await invalidatePrefix([tenantId, id]);
-            await invalidatePrefix([tenantId, "listDocuments"]);
+        //     const parentId = values["clone-id"];
+        //     const parentIdTenant = values["clone-tenant"];
+        //     const fetched = await fetchRow(log, "TenantDocuments", parentIdTenant, parentId);
 
-        }
+        //     const id = newid();
 
-    }
+        //     const data = {
+        //         ...fetched,
+        //         ...whiteListValues(log, values),
+        //         ...commonDefaults(),
+        //         id,
+        //         tenant: tenantId,
+        //         parentId,
+        //         parentIdTenant,
+        //         grandParentId: fetched.parentId,
+        //         grandParentIdTenant: fetched.parentIdTenant
+        //     };
+
+        //     await mutateWorkflowStateForItem(log, tenantId, null, data);
+        //     return await cloneDocument(id, tenantId, data, parentId, parentIdTenant);
+
+        // },
+
+        // async cloneDocumentForUser(user, values) {
+
+        //     const parentId = values["clone-id"];
+        //     const parentIdTenant = values["clone-tenant"];
+        //     const fetched = await fetchRow(log, "TenantDocuments", parentIdTenant, parentId);
+
+        //     const { id: createdBy } = user;
+        //     const id = newid();
+
+        //     const data = {
+        //         ...fetched,
+        //         ...whiteListValues(log, values),
+        //         ...commonDefaults(),
+        //         createdBy,
+        //         id,
+        //         tenant: parentIdTenant,
+        //         parentId,
+        //         parentIdTenant,
+        //         grandParentId: fetched.parentId,
+        //         grandParentIdTenant: fetched.parentIdTenant,
+        //     };
+
+        //     await mutateWorkflowStateForItem(log, parentIdTenant, null, data);
+        //     return await cloneDocument(id, parentIdTenant, data, parentId, parentIdTenant);
+
+        // },
+
+        // async deleteDocument(id) {
+
+        //     await deleteRow(log, "TenantDocuments", tenantId, id);
+        //     await invalidatePrefix([tenantId, id]);
+        //     await invalidatePrefix([tenantId, "listDocuments"]);
+
+        // }
+
+    };
 
     async function cloneDocument(id, documentTenantId, data, parentId, parentIdTenant) {
         const created = await createRow(log, "TenantDocuments", documentTenantId, id, data);

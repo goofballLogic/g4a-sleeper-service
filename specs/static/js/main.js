@@ -9,11 +9,14 @@ function error(err) {
     alert(err);
 }
 
-function el(tag, classes, text) {
+function el(tag, classes, text, attrs) {
 
     const x = document.createElement(tag);
     if (classes) x.className = classes.join(" ");
     if (text) x.textContent = text;
+    if (attrs)
+        for (const key in attrs)
+            x.setAttribute(key, attrs[key]);
     return x;
 
 }
@@ -40,12 +43,35 @@ function htmlRender(output, container) {
             if (message.underline) classes.push("underline");
             if (message.color) classes.push(`color-${message.color}`);
             if (message.pre) classes.push("pre");
-            if (message.text)
-                newContainer.appendChild(el("DIV", classes, message.text));
+            if (message.text) {
+
+                const textContainer = message.link
+                    ? el("A", classes, message.text, { href: message.link })
+                    : el("DIV", classes, message.text);
+                if (message.table) {
+
+                    const table = el("TABLE");
+                    const tbody = el("TBODY");
+                    table.appendChild(tbody);
+                    for (const row of message.table) {
+
+                        const tr = el("TR");
+                        tbody.appendChild(tr);
+                        for (const cell of row)
+                            tr.appendChild(el("TD", null, cell));
+
+                    }
+                    textContainer.appendChild(table);
+
+                }
+                newContainer.appendChild(textContainer);
+
+            }
             else if (message.error)
                 newContainer.appendChild(el("DIV", classes.concat("error"), message.error));
             else
                 newContainer.appendChild(el("DIV", classes.concat("error"), `Unrecognised: ${JSON.stringify(message)}`));
+
 
         }
         if (output.output) htmlRender(output.output, newContainer);
@@ -169,7 +195,7 @@ async function processFeature(output, feature, pickles, featurePath, runContext)
     const ret = {
         space: true,
         messages: [
-            { text: `${keyword}: ${featureName}`, bold: true, underline: true },
+            { text: `${keyword}: ${featureName}`, bold: true, underline: true, link: `?feature=${featurePath}` },
             { text: description, pre: true }
         ],
         output: []
@@ -200,7 +226,7 @@ async function processPickle(output, pickle, children, featurePath, featureConte
     if (!pickleChild)
         ret.messages.push({ error: new Error(`Invalid lookupId for "${scenarioName}" in ${featurePath}`) });
     else {
-        ret.messages.push({ bold: true, text: `${pickleChild.keyword}: ${scenarioName}` });
+        ret.messages.push({ bold: true, text: `${pickleChild.keyword}: ${scenarioName}`, link: `?scenario=${scenarioName}` });
         if (steps)
             for (const step of steps) {
                 const stepRet = {
@@ -240,8 +266,10 @@ async function processStep(ret, step, stepDef, skipping, scenarioContext) {
     else {
 
         const stepText = `${stepDef.keyword}${text}`;
+        const stepDataTable = maybeParseDataTable(stepDef);
+
         if (skipping)
-            ret.messages.push({ color: "silver", text: stepText });
+            ret.messages.push({ color: "silver", text: stepText, table: stepDataTable });
         else if (matchedTest) {
 
             const test = entries.find(e => e.keyword === matchedTest.keyword &&
@@ -251,12 +279,34 @@ async function processStep(ret, step, stepDef, skipping, scenarioContext) {
                 const { strategy } = test;
                 try {
 
-                    await strategy.apply(scenarioContext, matchedTest.args);
-                    ret.messages.push({ color: "green", text: stepText });
+                    const args = matchedTest.args || [];
+                    if (step.argument && step.argument.dataTable) {
+
+                        const { dataTable } = step.argument;
+                        const raw = dataTable.rows.map(r => r.cells.map(c => c.value));
+                        args.push({
+
+                            raw() { return raw; },
+                            hashes() {
+
+                                const keys = raw[0];
+                                return raw.slice(1).map(r =>
+
+                                    Object.fromEntries(r.map((c, i) => [keys[i], c]))
+
+                                );
+
+                            }
+
+                        });
+
+                    }
+                    await strategy.apply(scenarioContext, args);
+                    ret.messages.push({ color: "green", text: stepText, table: stepDataTable });
 
                 } catch (err) {
 
-                    ret.messages.push({ color: "red", text: stepText });
+                    ret.messages.push({ color: "red", text: stepText, table: stepDataTable });
                     const errorRet = { messages: [] };
                     ret.output.push(errorRet);
                     if ("expected" in err) {
@@ -282,12 +332,18 @@ async function processStep(ret, step, stepDef, skipping, scenarioContext) {
 
         } else {
 
-            ret.messages.push({ color: "blue", text: `Not defined: ${stepText}` });
+            ret.messages.push({ color: "blue", text: `Not defined: ${stepText}`, table: stepDataTable });
             skipping = true;
 
         }
 
     }
     return skipping;
+}
+
+function maybeParseDataTable(stepDef) {
+
+    return stepDef.dataTable && stepDef.dataTable.rows.map(row => row.cells.map(c => c.value));
+
 }
 

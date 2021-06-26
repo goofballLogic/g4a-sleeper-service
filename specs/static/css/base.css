@@ -51,13 +51,26 @@ article {
     background-color: white;
     padding: 15px 0;
     margin: 7px;
-    min-width: 300px;
+    min-width: 400px;
     box-shadow: 0 0 6px -2px black;
     border-radius: 3px;
 }
 
-section, div {
+section, div, a.bold {
     padding: 0 15px;
+    color: black;
+    text-decoration: none;
+}
+
+table {
+    margin: 0 30px;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+table td {
+    border: solid 0.1px #EEE;
+    padding: 2px 6px;
 }
 
 .error {

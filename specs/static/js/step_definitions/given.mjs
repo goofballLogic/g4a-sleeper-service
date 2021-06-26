@@ -31,7 +31,7 @@ Given("{word} has a public {string} document named {string} created by {word}", 
 
 });
 
-Given("{word} has a {string} document named {string} created by {word}", async function (
+Given("{word} has a(n) {string} document named {string} created by {word}", async function (
     tenantName, disposition, documentName, userName) {
 
     await createDocumentForUser.call(this, documentName, disposition, tenantName, userName);

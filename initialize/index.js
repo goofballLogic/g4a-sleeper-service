@@ -51,6 +51,12 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
 
     log(`Initializing user ${userId}`);
 
+    if (isSelfTest(referer)) {
+
+        log("Initialize self-test: aborting");
+        return null;
+
+    }
     log(`Fetching default workflows from ` + referer);
     const defaultsURL = new URL(referer);
     defaultsURL.search = "";
@@ -83,6 +89,12 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
 
     }
     return await user.fetch();
+
+}
+
+function isSelfTest(defaultsURL) {
+
+    return new URL(defaultsURL, "http://whatever.com").pathname.endsWith("/api/specs");
 
 }
 
