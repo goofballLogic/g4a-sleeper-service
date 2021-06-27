@@ -44,3 +44,13 @@ Then("the initialization call should have succeeded", function () {
         throw new Error(`Initialize failed: ${lastInitializeFetch.status} ${lastInitializeFetch.statusText}`);
 
 });
+
+Then("the initialization call should have failed", function () {
+
+    const { lastInitializeFetch } = this;
+    if (!lastInitializeFetch)
+        throw new Error("No initialize was requested");
+    if (lastInitializeFetch.ok)
+        throw new Error(`Initialize succeeded: ${lastInitializeFetch.status} ${lastInitializeFetch.statusText}`);
+
+});
