@@ -28,9 +28,10 @@ app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
 
         const { headers } = req;
         let referer = headers["x-initialize-referer"] || headers.referer;
+        app.log(headers);
         if (!referer) throw new Error("Unable to determine referer");
 
-        user = await initializeUser(req.user || { userId }, userId, referer, log);
+        user = await initializeUser(userId, userId, referer, log);
         res.status(201).json(user);
 
     }
@@ -46,9 +47,8 @@ const defaultsShape = {
     "@type": "Workflow"
 };
 
-async function initializeUser(userContext, defaultTenantId, referer, log) {
+async function initializeUser(userId, defaultTenantId, referer, log) {
 
-    const { userId } = userContext;
     log(`Initializing user ${userId}`);
 
     if (isSelfTest(referer)) {
@@ -58,7 +58,7 @@ async function initializeUser(userContext, defaultTenantId, referer, log) {
 
     }
     log(`Fetching default workflows from ` + referer);
-    const defaultsURL = determineDefaultsURL(userContext, referer);
+    const defaultsURL = determineDefaultsURL(referer);
     const resp = await fetch(defaultsURL);
     if (!resp.ok) throw new Error(`An error occurred fetching default workflows from ${defaultsURL}: ${resp.status}`);
     const json = await resp.json();
@@ -92,16 +92,10 @@ async function initializeUser(userContext, defaultTenantId, referer, log) {
 
 function determineDefaultsURL(userContext, referer) {
 
-    if (userContext.workflowDefaults)
-        return new URL(userContext.workflowDefaults);
-    else {
-
-        const defaultsURL = new URL(referer);
-        defaultsURL.search = "";
-        defaultsURL.pathname = "/.well-known/workflows/defaults.jsonld";
-        return defaultsURL;
-
-    }
+    const defaultsURL = new URL(referer);
+    defaultsURL.search = "";
+    defaultsURL.pathname = "/.well-known/workflows/defaults.jsonld";
+    return defaultsURL;
 
 }
 
