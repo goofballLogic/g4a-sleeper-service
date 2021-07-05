@@ -90,7 +90,7 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
 
 }
 
-function determineDefaultsURL(userContext, referer) {
+function determineDefaultsURL(referer) {
 
     const defaultsURL = new URL(referer);
     defaultsURL.search = "";
