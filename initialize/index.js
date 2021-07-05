@@ -28,7 +28,7 @@ app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
 
         const { headers } = req;
         let referer = headers["x-initialize-referer"] || headers.referer;
-        app.log(headers);
+        log(headers);
         if (!referer) throw new Error("Unable to determine referer");
 
         user = await initializeUser(userId, userId, referer, log);
