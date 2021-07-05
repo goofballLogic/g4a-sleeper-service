@@ -79,39 +79,39 @@ function tenant(log, tenantId) {
 
         },
 
-        // async ensureUserDoesNotExist(userId) {
+        async ensureUserDoesNotExist(userId) {
 
-        //     log(`Ensure user ${userId} does not exist`);
-        //     await deleteRow(log, "Users", userId, "");
+            log(`Ensure user ${userId} does not exist`);
+            await deleteRow(log, "Users", userId, "");
 
-        // },
+        },
 
-        // async fetchOrCreateGroup(groupName, permissions) {
+        async fetchOrCreateGroup(groupName, permissions) {
 
-        //     log(`Ensure group ${groupName} exists for tenant ${tenantId}`);
-        //     const groups = await listRows(log, "TenantGroups", tenantId);
-        //     let group = groups.find(g => g.name === groupName);
-        //     if (!group) {
+            log(`Ensure group ${groupName} exists for tenant ${tenantId}`);
+            const groups = await listRows(log, "TenantGroups", tenantId);
+            let group = groups.find(g => g.name === groupName);
+            if (!group) {
 
-        //         const name = groupName;
-        //         const id = newid();
-        //         const data = { ...commonDefaults(), name, id, tenantId, permissions };
-        //         group = await createRow(log, "TenantGroups", tenantId, id, data, true);
+                const name = groupName;
+                const id = newid();
+                const data = { ...commonDefaults(), name, id, tenantId, permissions };
+                group = await createRow(log, "TenantGroups", tenantId, id, data, true);
 
-        //     }
-        //     return {
+            }
+            return {
 
-        //         async ensureGroupMembership(user) {
+                async ensureGroupMembership(user) {
 
-        //             log(`Ensure group ${groupName} for tenant ${tenantId} has member ${user?.id}`)
-        //             const data = { ...commonDefaults(), groupId: group.id, userId: user.id };
-        //             await createRow(log, "TenantGroupUsers", tenantId, `${data.userId}_${data.groupId}`, data, true);
+                    log(`Ensure group ${groupName} for tenant ${tenantId} has member ${user?.id}`)
+                    const data = { ...commonDefaults(), groupId: group.id, userId: user.id };
+                    await createRow(log, "TenantGroupUsers", tenantId, `${data.userId}_${data.groupId}`, data, true);
 
-        //         }
+                }
 
-        //     };
+            };
 
-        // },
+        },
 
         // async validateCreation(data) {
 
