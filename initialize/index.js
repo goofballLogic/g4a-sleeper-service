@@ -15,6 +15,8 @@ const CURRENT_VERSION = 1;
 app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
 
     const userId = req.query?.userId || req.user?.id;
+    const isTestUser = req.user?.isTestUser;
+
     if (!userId) throw new Error("No user found");
 
     const log = req.context.log.bind(req.context);
@@ -28,10 +30,9 @@ app.post("/api/initialize", authMiddleware, or500(async (req, res) => {
 
         const { headers } = req;
         let referer = headers["x-initialize-referer"] || headers.referer;
-        log(headers);
         if (!referer) throw new Error("Unable to determine referer");
 
-        user = await initializeUser(userId, userId, referer, log);
+        user = await initializeUser(userId, userId, referer, isTestUser, log);
         res.status(201).json(user);
 
     }
@@ -47,16 +48,10 @@ const defaultsShape = {
     "@type": "Workflow"
 };
 
-async function initializeUser(userId, defaultTenantId, referer, log) {
+async function initializeUser(userId, defaultTenantId, referer, isTestUser, log) {
 
     log(`Initializing user ${userId}`);
 
-    if (isSelfTest(referer)) {
-
-        log("Initialize self-test: aborting");
-        return null;
-
-    }
     log(`Fetching default workflows from ` + referer);
     const defaultsURL = determineDefaultsURL(referer);
     const resp = await fetch(defaultsURL);
@@ -69,7 +64,9 @@ async function initializeUser(userId, defaultTenantId, referer, log) {
 
     try {
 
-        const userAttributes = await user.fetchADAttributes();
+        const userAttributes = isTestUser
+            ? await user.testUserAttributes(userId)
+            : await user.fetchADAttributes();
         const displayName = `Grants by ${userAttributes.givenName} ${userAttributes.surname}`;
         await tenant.ensureExists({ name: "Default tenant", displayName });
         const adminsGroup = await tenant.fetchOrCreateGroup("Owners", "");
@@ -96,12 +93,6 @@ function determineDefaultsURL(referer) {
     defaultsURL.search = "";
     defaultsURL.pathname = "/.well-known/workflows/defaults.jsonld";
     return defaultsURL;
-
-}
-
-function isSelfTest(defaultsURL) {
-
-    return new URL(defaultsURL, "http://whatever.com").pathname.endsWith("/api/specs");
 
 }
 

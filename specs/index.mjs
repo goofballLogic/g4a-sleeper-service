@@ -102,8 +102,11 @@ async function sessions(route, context, req) {
         return badRequest(`Expected sesion prefix ${TEST_PREFIX} but got ${sessionPrefix}`);
     const pending = [];
     pending.push(deleteBlobContainersWithPrefix(context.log, sessionPrefix));
-    for (const tableName of allTables)
+    pending.push(deleteBlobContainersWithPrefix(context.log, "test-"));
+    for (const tableName of allTables) {
         pending.push(deleteRowsWithPartitionPrefix(context.log, tableName, sessionPrefix));
+        pending.push(deleteRowsWithPartitionPrefix(context.log, tableName, "__testuser"));
+    }
     await Promise.all(pending);
     context.log(`Deleted session ${sessionPrefix}`);
 

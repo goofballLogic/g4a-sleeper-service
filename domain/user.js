@@ -26,10 +26,16 @@ function user(log, userId) {
 
         },
 
+        async testUserAttributes(userId) {
+
+            return { givenName: "test", surname: "user", email: `${userId}@test.com` };
+
+        },
+
         async fetchADAttributes() {
 
             if (userId.startsWith(TEST_PREFIX))
-                return { givenName: "test", surname: "user", email: "user@test.com" };
+                return await this.testUserAttributes("user");
 
             const props = "givenName,surname,identities";
             const { givenName, surname, identities } = await readThrough(["user", userId, props], async () => {

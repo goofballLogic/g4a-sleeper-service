@@ -31,7 +31,10 @@ When("{word} lists documents in {word}", async function (userName, tenantName) {
 
 When("I call to initialize as user {word}", async function (userName) {
 
-    const headers = { "Authorization": `Bearer TESTUSER: ${userName}` };
+    const headers = {
+        "Authorization": `Bearer TESTUSER: ${userName}`,
+        "x-initialize-referer": "https://grants4all.z35.web.core.windows.net"
+    };
     this.lastInitializeFetch = await fetch(`/api/initialize`, { method: "POST", headers });
 
 });
